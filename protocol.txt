@@ -14,7 +14,10 @@ response from server:
 	'errcode': '0',
 	'errtext': ''
 }
-	
+state=1 - agent should be idle, no reporting
+state=2 - agent active, reporting data	
+
+
 
 reporting aggregated data to server
 

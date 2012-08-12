@@ -5,7 +5,7 @@ import win32event
 import metricsmain
 
 class MetricService(win32serviceutil.ServiceFramework):
-    _svc_name_ = "MetricService"
+    _svc_name_ = "ServerMetrics"
     _svc_display_name_ = "LoadImpact.com agent"
     _svc_description_ = "Agent for server metrics"
 

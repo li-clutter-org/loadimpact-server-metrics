@@ -1,54 +1,54 @@
 #!/usr/bin/env python
 import ConfigParser
-import json
-import re
-import subprocess
-import sys
-import threading
-import time
-import urllib2
-import inspect
-import os
-import logging
-import logging.handlers
+import sys, os
+import subprocess, threading, time
+import urllib2, json, re
+import logging, logging.config, logging.handlers, traceback
+
+try:
+    import psutil
+except ImportError:
+    print "Can't find module psutil"
+    sys.exit(1)
 
 # need this to figure out where the config file is located
-currentpath = os.path.dirname(inspect.currentframe().f_code.co_filename)
+currentpath = os.path.dirname(os.path.realpath(__file__)) 
 
-# todo: proper logs and log levels
-LOGFILE   = currentpath  + "/metricservice.log"
+CONFIGFILE = currentpath + "/servermetrics.cfg"
+VERSION = "0.03"
 
-logger = logging.getLogger('metricsmain')
-logger.setLevel(logging.DEBUG)
-handler = logging.handlers.RotatingFileHandler(LOGFILE, maxBytes=0, backupCount=0)
-handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+logging.config.fileConfig(CONFIGFILE)
 
-def LogDump(filename):
+def LogDump():
     tb  = str(traceback.format_exc()).split("\n")
-    logger.error("")
+    logging.error("")
     for i, a in enumerate(tb):
         if a.strip() != "":
-            logger.error(a)
+            logging.error(a)
             
-# json helper
-# report one value, perhaps we should buffer and report several values on next ping?
-def fakeJson(agentname,label,value,unit):
-    j = json.dumps({'clientid':agentname,'metrics':({'label':label, 'value':value, 'unit': unit},)}, indent=4)
+# json helper for ping, response will tell us if we are to be active or idle
+def jsonPing(agenttoken, agentname):
+    j = json.dumps({'agenttoken':agenttoken,'agentname':agentname, 'version':VERSION}, indent=4)
     return j
 
-# json http helper
-# todo: could use some error handling :)
-def getUrl(url, jsondata):
-    logger.debug(url)
-    request = urllib2.Request(url, jsondata, {'Content-Type': 'application/json'})           
-    response = urllib2.urlopen(request)
-    j = json.loads(response.read())
-    response.close()
-    logger.debug(j)
+# json helper for data reporting
+def jsonData(agenttoken,agentname,label,minValue,maxValue,avgValue,count,unit):
+    j = json.dumps({'agenttoken':agenttoken,'agentname':agentname,'version':VERSION,'label':label, 'minValue':minValue, 'maxValue':maxValue, 'avgValue':avgValue, 'count':count, 'unit': unit}, indent=4)
     return j
+    
+# json http helper
+def getUrl(url, jsondata):
+    logging.debug(url)
+    try:
+        request = urllib2.Request(url, jsondata, {'Content-Type': 'application/json'})           
+        response = urllib2.urlopen(request)
+        j = json.loads(response.read())
+        response.close()
+        logging.debug(j)
+        return j
+    except Exception:
+        LogDump()
+        pass    
     
 class Scheduler:
     def __init__( self ):
@@ -60,43 +60,44 @@ class Scheduler:
             rep += '%s\n' % `task`
         return rep
         
-    def AddTask( self, agentname, cmd, loopdelay, dataurl ):
-        task = Task( agentname, cmd, loopdelay, dataurl )
+    def AddTask( self, agenttoken, agentname, cmd, loopdelay, dataurl ):
+        task = Task( agenttoken, agentname, cmd, loopdelay, dataurl )
         self.__tasks.append( task )
     
     def StartAllTasks( self ):
         for task in self.__tasks:
-            logger.debug('starting %s', task)
+            logging.debug('starting %s', task)
             task.start()
 
-    def PauseAllTasks( self, state ):
+    def SetStateAllTasks( self, state ):
         for task in self.__tasks:
             task.setState( state );
     
     def StopAllTasks( self ):
         for task in self.__tasks:
-            logger.debug('stopping %s', task)
+            logging.debug('stopping %s', task)
             task.stop()
             task.join()
 
+# this is the main loop, pinging server to see if state should change between idle and active
 class PingLoop( threading.Thread ):
     def __init__( self ):
         self.__loopdelay = 30   # ping every 30 sec
         self.__state = 0   # 0 - unknown, 1 - idle, 2 - reporting
-        self.__running = 1
+        self.__running = True 
         # get config file
         config = ConfigParser.ConfigParser()
-        config.read(currentpath + '/servermetrics.cfg')
-        # todo: probably need a agent/client ID as well as a machine/host name
+        config.read(CONFIGFILE)
+        self.__agenttoken = config.get('General', 'agenttoken')
         self.__agentname = config.get('General', 'agentname')
         self.__pingurl = config.get('General', 'pingurl')
         dataurl = config.get('General', 'dataurl')
         self.__sch = Scheduler()
-        # find all tasks, aka config options named 'command'
+        # config options named 'command' are our tasks
         for section in config.sections():
             if ( config.has_option(section, 'command')):
                 cmd = config.get(section, 'command')
-                self.__sch.AddTask(self.__agentname, cmd, 10, dataurl )     # 10sec 
+                self.__sch.AddTask(self.__agenttoken, self.__agentname, cmd, 10, dataurl )     # 10sec 
         # start all tasks (but in idle state)
         self.__sch.StartAllTasks()
         threading.Thread.__init__( self )
@@ -106,65 +107,112 @@ class PingLoop( threading.Thread ):
         while self.__running:
             start = time.time()
             try:
-                j = getUrl( self.__pingurl, fakeJson(self.__agentname, 0,  0, 0))
-                logger.debug("state is %s", j['status'])
-                if(j['status'] != self.__state):    # status changed, stop or start reporting
-                    self.__state = j['status']
-                    self.__sch.PauseAllTasks( j['status'])                   
+                j = getUrl( self.__pingurl, jsonPing(self.__agenttoken, self.__agentname))
+                if(j['state'] != self.__state):    # state changed, stop or start reporting
+                    self.__state = j['state']
+                    self.__sch.SetStateAllTasks( j['state'])   # notify all tasks               
             except Exception:
-                LogDump(LOGFILE)
-                pass    # fix this later :)
+                LogDump()
+                pass
             self.__runtime += self.__loopdelay
             time.sleep( max( 0, self.__runtime - start ) )    
 
     def stop( self ):
         self.__sch.StopAllTasks()
-        self.__running = 0
+        self.__running = False
 
 class Task( threading.Thread ):
-    def __init__( self, agentname, cmd, loopdelay, dataurl ):
+    def __init__( self, agenttoken, agentname, cmd, loopdelay, dataurl ):
+        self.__agenttoken = agenttoken
         self.__agentname = agentname
         self.__cmd = cmd
         self.__loopdelay = loopdelay
         self.__dataurl = dataurl
-        self.__running = 1
-        self.__state = 1   # start in idle state, will be upgraded to active on first ping
+        self.__running = True      # is running
+        self.__state = 1        # start in idle state, will be upgraded to active on first ping
+        self.__dataBuffer = []  # values
+        self.__lastReportTime = time.time()
         threading.Thread.__init__( self )
 
     def __repr__( self ):
-        return '%s %s' % (
-            self.__cmd, self.__loopdelay )
+        return 'task %s' % ( self.__cmd )
 
     def setState( self, state ):
         self.__state = state
+        
+    def reportData(self, label, value, unit):
+        self.__dataBuffer.append(float(value))
+        # more than 60 secs since last report?
+        if( (self.__lastReportTime + 59) < time.time() ):
+            try:
+                vMin = sys.float_info.max
+                vMax = 0
+                vTot = 0
+                for v in self.__dataBuffer:
+                    vMin = min(vMin, v)
+                    vMax = max(vMax, v)
+                    vTot = vTot + v
+                    
+                vAvg = vTot / len(self.__dataBuffer)
+                j = getUrl(self.__dataurl, jsonData(self.__agenttoken, self.__agentname, label, vMin, vMax, vAvg, len(self.__dataBuffer), unit))
+                self.__lastReportTime = time.time()
+                self.__dataBuffer = []
+            except Exception:
+                LogDump()
+                pass          
         
     def run( self ):
         self.__runtime = time.time()
         while self.__running:
             start = time.time()
-            logger.debug('checking %s state is %s', self.__cmd, self.__state)
+            logging.debug('checking %s state is %s', self.__cmd, self.__state)
             try:
                 if( self.__state == 2 ):    
-                    logger.debug('running %s ', self.__cmd)
-                    c = subprocess.Popen(self.__cmd, shell=True, stdout=subprocess.PIPE)
-                    line = c.stdout.next() # pray for at least one line 
+                    logging.debug('running %s ', self.__cmd)
+                    if (self.__cmd.lower().startswith('builtin')) :
+                        line = self.runInternal(self.__cmd.lower().split())
+                    else :
+                        c = subprocess.Popen(self.__cmd, shell=True, stdout=subprocess.PIPE)
+                        line = c.stdout.next() # pray for at least one line 
                     # todo: improve this regexp
                     rex = re.match('^.*\|(.*)=([0-9.]+)([a-zA-Z%])', line)
-                    j = getUrl(self.__dataurl, fakeJson(self.__agentname,rex.group(1), rex.group(2), rex.group(3)))
-                    # maybe we should use the json data :)
+                    self.reportData(rex.group(1), rex.group(2), rex.group(3))
             except Exception:
-                LogDump(LOGFILE)
-                pass        # well, yeah, eh...
+                LogDump()
+                pass        
             self.__runtime += self.__loopdelay
-            logger.debug('sleeping %s secs', self.__runtime - start)
-            time.sleep( max( 0, self.__runtime - start ) )    # kinda ugly...
+            logging.debug('sleeping %s secs', self.__runtime - start)
+            time.sleep( max( 0, self.__runtime - start ) )    # try to compensate for run time
+
+    def runInternal( self, cmd ):
+        if(cmd[1] == 'cpu'):
+            cpu = psutil.cpu_percent(interval=1)
+            line = "CPU load %s%%|CPU=%s%%;" % ( cpu, cpu )
+            return line
+        if(cmd[1] == 'memory'):
+            phymem = psutil.phymem_usage()
+            buffers = getattr(psutil, 'phymem_buffers', lambda: 0)()
+            cached = getattr(psutil, 'cached_phymem', lambda: 0)()
+            used = phymem.total - (phymem.free + buffers + cached)
+            line = "Memory usage %6s/%s |Memusage=%s%%;" % (
+                str(int(used / 1024 / 1024)) + "M",
+                str(int(phymem.total / 1024 / 1024)) + "M",
+                phymem.percent
+            )
+            return line
+        return "unknown 0|unknown=0%%;"
+
+
 
     def stop( self ):
-        self.__running = 0
+        self.__running = False   
+        
     
 if __name__ == "__main__":      # if started from shell
+    print 'press the Any Key to stop me'
     mainLupe = PingLoop()
     mainLupe.start()
     raw_input() # run until keypress...
+    print 'ok ok'
     mainLupe.stop()
     mainLupe.join()

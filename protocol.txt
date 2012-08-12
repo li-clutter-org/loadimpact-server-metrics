@@ -1,0 +1,37 @@
+ping sent to server every 30 secs:
+
+{
+	'agenttoken':'4711',
+	'agentname':'WOPR',
+	'version':'0.02'
+}
+
+
+response from server:
+
+{
+	'state': '1',		
+	'errcode': '0',
+	'errtext': ''
+}
+	
+
+reporting aggregated data to server
+
+{
+	'agenttoken':'4711',
+	'agentname':'WOPR',
+	'version':'0.02',
+	'label':'CPU',
+	'minValue':'2.3',
+	'maxValue':'2.5',
+	'avgValue':'2.4',
+	'count':'5',
+	'unit':'%'
+}	
+
+response from server:
+{
+	'errcode': '0',
+	'errtext': ''
+}

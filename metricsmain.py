@@ -131,6 +131,8 @@ class Task( threading.Thread ):
         self.__running = True      # is running
         self.__state = 1        # start in idle state, will be upgraded to active on first ping
         self.__dataBuffer = []  # values
+        self.__prevsent = 0
+        self.__prevrecv = 0
         self.__lastReportTime = time.time()
         threading.Thread.__init__( self )
 
@@ -170,39 +172,63 @@ class Task( threading.Thread ):
                 if( self.__state == 2 ):    
                     logging.debug('running %s ', self.__cmd)
                     if (self.__cmd.lower().startswith('builtin')) :
-                        line = self.runInternal(self.__cmd.lower().split())
+                        line = self.runInternal(self.__cmd)
                     else :
                         c = subprocess.Popen(self.__cmd, shell=True, stdout=subprocess.PIPE)
                         line = c.stdout.next() # pray for at least one line 
                     # todo: improve this regexp
-                    rex = re.match('^.*\|(.*)=([0-9.]+)([a-zA-Z%])', line)
+                    rex = re.match('^.*\|(.*)=([0-9.]+)([a-zA-Z%/]+)', line)
                     self.reportData(rex.group(1), rex.group(2), rex.group(3))
             except Exception:
                 LogDump()
                 pass        
             self.__runtime += self.__loopdelay
-            logging.debug('sleeping %s secs', self.__runtime - start)
             time.sleep( max( 0, self.__runtime - start ) )    # try to compensate for run time
 
     def runInternal( self, cmd ):
-        if(cmd[1] == 'cpu'):
+        errline = "unknown 0|unknown=0%%;"
+        args = [s for s in re.split("( |\\\".*?\\\"|'.*?')", cmd) if s.strip()]
+        if(len(args) < 2):
+            logging.error('missing argument(s) for BUILTIN: '+cmd)
+            return errline
+            
+        if(args[1].lower() == 'cpu'):
             cpu = psutil.cpu_percent(interval=1)
             line = "CPU load %s%%|CPU=%s%%;" % ( cpu, cpu )
             return line
-        if(cmd[1] == 'memory'):
+
+        if(args[1].lower() == 'memory'):
             phymem = psutil.phymem_usage()
-            buffers = getattr(psutil, 'phymem_buffers', lambda: 0)()
-            cached = getattr(psutil, 'cached_phymem', lambda: 0)()
-            used = phymem.total - (phymem.free + buffers + cached)
-            line = "Memory usage %6s/%s |Memusage=%s%%;" % (
-                str(int(used / 1024 / 1024)) + "M",
-                str(int(phymem.total / 1024 / 1024)) + "M",
+            line = "Memory usage %s%% |Memusage=%s%%;" % (
+                phymem.percent,
                 phymem.percent
             )
             return line
-        return "unknown 0|unknown=0%%;"
+            
+        if(args[1].lower() == 'network'):
+            try:
+                if(len(args)>2):
+                    interface = args[2].replace("'", "")
+                    counters = psutil.network_io_counters(pernic=True)
+                    counters = counters[interface]
+                else:
+                    counters = psutil.network_io_counters(pernic=False)
+                sent = getattr(counters, 'bytes_sent')
+                recv = getattr(counters, 'bytes_recv')
+                tot = 0
+                if(self.__prevsent>0):
+                    tot = (sent-self.__prevsent) + (recv-self.__prevrecv)
+                self.__prevsent = sent
+                self.__prevrecv = recv
+                line = "%s over %s sec|Network=%skB/s" % (tot, self.__loopdelay, str(int((tot/self.__loopdelay) / 1024 )))
+                return line    
+            except Exception:
+                logging.error('possibly incorrect network interface name')
+                LogDump()
+                return errline
 
-
+        logging.error('incorrect argument for BUILTIN: '+cmd)
+        return errline
 
     def stop( self ):
         self.__running = False   

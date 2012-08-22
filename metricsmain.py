@@ -15,7 +15,7 @@ except ImportError:
 currentpath = os.path.dirname(os.path.realpath(__file__)) 
 
 CONFIGFILE = currentpath + "/servermetrics.cfg"
-VERSION = "0.03"
+VERSION = "0.04"
 
 logging.config.fileConfig(CONFIGFILE)
 
@@ -32,8 +32,8 @@ def jsonPing(agenttoken, agentname):
     return j
 
 # json helper for data reporting
-def jsonData(agenttoken,agentname,label,minValue,maxValue,avgValue,count,unit):
-    j = json.dumps({'agenttoken':agenttoken,'agentname':agentname,'version':VERSION,'label':label, 'minValue':minValue, 'maxValue':maxValue, 'avgValue':avgValue, 'count':count, 'unit': unit}, indent=4)
+def jsonData(agenttoken,agentname,label,minValue,maxValue,avgValue,stdDevValue,medianValue,count,unit):
+    j = json.dumps({'agenttoken':agenttoken,'agentname':agentname,'version':VERSION,'label':label, 'minValue':minValue, 'maxValue':maxValue, 'avgValue':avgValue, 'stdDevValue':stdDevValue,'medianValue':medianValue,'count':count, 'unit': unit}, indent=4)
     return j
     
 # json http helper
@@ -147,16 +147,38 @@ class Task( threading.Thread ):
         # more than 60 secs since last report?
         if( (self.__lastReportTime + 59) < time.time() ):
             try:
+                vCount = len(self.__dataBuffer)
+                # avg value
+                #
                 vMin = sys.float_info.max
-                vMax = 0
-                vTot = 0
+                vMax = 0.0
+                vTot = 0.0
                 for v in self.__dataBuffer:
                     vMin = min(vMin, v)
                     vMax = max(vMax, v)
                     vTot = vTot + v
-                    
-                vAvg = vTot / len(self.__dataBuffer)
-                j = getUrl(self.__dataurl, jsonData(self.__agenttoken, self.__agentname, label, vMin, vMax, vAvg, len(self.__dataBuffer), unit))
+                
+                vAvg = vTot / vCount
+
+                # std dev value
+                #
+                vTot = 0.0
+                for v in self.__dataBuffer:
+                    vTot += ((v-vAvg)**2)
+        
+                vStdDev = math.sqrt((1.0/(vCount-1))*(vTot))
+                   
+                # median
+                #
+                sValues = sorted(self.__dataBuffer)
+                if vCount % 2 == 1:
+                    vMedian = sValues[(vCount+1)/2-1]
+                else:
+                    lower = sValues[vCount/2-1]
+                    upper = sValues[vCount/2]
+                    vMedian = (float(lower + upper)) / 2
+
+                j = getUrl(self.__dataurl, jsonData(self.__agenttoken, self.__agentname, label, vMin, vMax, vAvg, vStdDev, vMedian, vCount, unit))
                 self.__lastReportTime = time.time()
                 self.__dataBuffer = []
             except Exception:

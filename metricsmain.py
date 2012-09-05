@@ -49,6 +49,19 @@ def getUrl(url, jsondata):
     except Exception:
         LogDump()
         pass    
+
+def getUrl_ping(url, jsondata):
+    logging.debug(url)
+    try:
+        request = urllib2.Request(url)
+        response = urllib2.urlopen(request)
+        j = json.loads(response.read())
+        response.close()
+        logging.debug(j)
+        return j
+    except Exception, e:
+        LogDump()
+        pass    
     
 class Scheduler:
     def __init__( self ):
@@ -107,7 +120,8 @@ class PingLoop( threading.Thread ):
         while self.__running:
             start = time.time()
             try:
-                j = getUrl( self.__pingurl, jsonPing(self.__agenttoken, self.__agentname))
+                j = getUrl_ping( self.__pingurl, jsonPing(self.__agenttoken, self.__agentname))
+                print repr(j['state']), j
                 if(j['state'] != self.__state):    # state changed, stop or start reporting
                     self.__state = j['state']
                     self.__sch.SetStateAllTasks( j['state'])   # notify all tasks               
@@ -145,7 +159,8 @@ class Task( threading.Thread ):
     def reportData(self, label, value, unit):
         self.__dataBuffer.append(float(value))
         # more than 60 secs since last report?
-        if( (self.__lastReportTime + 59) < time.time() ):
+        if( (self.__lastReportTime + 10) < time.time() ):
+            print "RUNNING STUFFS", label, value, unit
             try:
                 vMin = sys.float_info.max
                 vMax = 0

@@ -3,7 +3,7 @@ ping sent to server every 30 secs:
 {
 	'agenttoken':'4711',
 	'agentname':'WOPR',
-	'version':'0.02'
+	'version':'0.04'
 }
 
 
@@ -29,6 +29,8 @@ reporting aggregated data to server
 	'minValue':'2.3',
 	'maxValue':'2.5',
 	'avgValue':'2.4',
+	'stdDevValue':'0.1',
+	'medianValue','2.4',
 	'count':'5',
 	'unit':'%'
 }	

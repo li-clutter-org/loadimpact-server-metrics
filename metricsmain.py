@@ -2,7 +2,7 @@
 import ConfigParser
 import sys, os, math
 import subprocess, threading, time
-import urllib2, json, re
+import json, re
 import logging, logging.config, logging.handlers, traceback
 
 try:
@@ -11,12 +11,20 @@ except ImportError:
     print "Can't find module psutil"
     sys.exit(1)
 
-# need this to figure out where the config file is located
+try:
+    import requests
+    from requests.auth import HTTPBasicAuth
+except ImportError:
+    print "Can't find module requests"
+    sys.exit(1)
+
+# figure out where the config file is located
 currentpath = os.path.dirname(os.path.realpath(__file__)) 
-
 CONFIGFILE = currentpath + "/servermetrics.cfg"
-VERSION = "0.04"
+PROTOCOLVERSION = "1"
+AGENTVERSION = "0.07"
 
+# setup logging
 logging.config.fileConfig(CONFIGFILE)
 
 def LogDump():
@@ -25,44 +33,27 @@ def LogDump():
     for i, a in enumerate(tb):
         if a.strip() != "":
             logging.error(a)
-            
-# json helper for ping, response will tell us if we are to be active or idle
-def jsonPing(agenttoken, agentname):
-    j = json.dumps({'agenttoken':agenttoken,'agentname':agentname, 'version':VERSION}, indent=4)
-    return j
 
-# json helper for data reporting
-def jsonData(agenttoken,agentname,label,minValue,maxValue,avgValue,stdDevValue,medianValue,count,unit):
-    j = json.dumps({'agenttoken':agenttoken,'agentname':agentname,'version':VERSION,'label':label, 'minValue':minValue, 'maxValue':maxValue, 'avgValue':avgValue, 'stdDevValue':stdDevValue,'medianValue':medianValue,'count':count, 'unit': unit}, indent=4)
-    return j
-    
-# json http helper
-def getUrl(url, jsondata):
+def doPing(url, agentname, token):
     logging.debug(url)
-    try:
-        request = urllib2.Request(url, jsondata, {'Content-Type': 'application/json'})           
-        response = urllib2.urlopen(request)
-        j = json.loads(response.read())
-        response.close()
-        logging.debug(j)
-        return j
-    except Exception:
-        LogDump()
-        pass    
+    j = json.dumps({'name':agentname, 'version':PROTOCOLVERSION}, indent=4)
+    r = requests.post(url, data=j, auth=HTTPBasicAuth(token, ''))    
+    if (r.status_code != 200):
+        # todo: maybe log something useful...
+        logging.error(r.status_code)
+        raise Exception(r.json) 
+    
+    return r.json
 
-def getUrl_ping(url, jsondata):
-    logging.debug(url)
-    try:
-        request = urllib2.Request(url)
-        response = urllib2.urlopen(request)
-        j = json.loads(response.read())
-        response.close()
-        logging.debug(j)
-        return j
-    except Exception, e:
-        LogDump()
-        pass    
-    
+def doReport(url, agentname, token,label,minValue,maxValue,avgValue,stdDevValue,medianValue,count,unit):
+    j = json.dumps({'name':agentname,'version':PROTOCOLVERSION,'label':label, 'minValue':minValue, 'maxValue':maxValue, 'avgValue':avgValue, 'stdDevValue':stdDevValue,'medianValue':medianValue,'count':count, 'unit': unit}, indent=4)
+    logging.debug(j)
+    r = requests.put(url, data=j, auth=HTTPBasicAuth(token, ''))
+    if (r.status_code != 200):
+        # todo: maybe log something useful...
+        logging.error(r.status_code)
+        raise Exception(r.json) 
+   
 class Scheduler:
     def __init__( self ):
         self.__tasks = []
@@ -120,8 +111,7 @@ class PingLoop( threading.Thread ):
         while self.__running:
             start = time.time()
             try:
-                j = getUrl_ping( self.__pingurl, jsonPing(self.__agenttoken, self.__agentname))
-                print repr(j['state']), j
+                j = doPing( self.__pingurl, self.__agentname, self.__agenttoken)
                 if(j['state'] != self.__state):    # state changed, stop or start reporting
                     self.__state = j['state']
                     self.__sch.SetStateAllTasks( j['state'])   # notify all tasks               
@@ -159,8 +149,7 @@ class Task( threading.Thread ):
     def reportData(self, label, value, unit):
         self.__dataBuffer.append(float(value))
         # more than 60 secs since last report?
-        if( (self.__lastReportTime + 10) < time.time() ):
-            print "RUNNING STUFFS", label, value, unit
+        if( (self.__lastReportTime + 59) < time.time() ):
             try:
                 vCount = len(self.__dataBuffer)
                 # avg value
@@ -193,7 +182,7 @@ class Task( threading.Thread ):
                     upper = sValues[vCount/2]
                     vMedian = (float(lower + upper)) / 2
 
-                j = getUrl(self.__dataurl, jsonData(self.__agenttoken, self.__agentname, label, vMin, vMax, vAvg, vStdDev, vMedian, vCount, unit))
+                doReport(self.__dataurl, self.__agentname, self.__agenttoken, label, vMin, vMax, vAvg, vStdDev, vMedian, vCount, unit)
                 self.__lastReportTime = time.time()
                 self.__dataBuffer = []
             except Exception:
@@ -204,7 +193,7 @@ class Task( threading.Thread ):
         self.__runtime = time.time()
         while self.__running:
             start = time.time()
-            logging.debug('checking %s state is %s', self.__cmd, self.__state)
+            # logging.debug('checking %s state is %s', self.__cmd, self.__state)
             try:
                 if( self.__state == 2 ):    
                     logging.debug('running %s ', self.__cmd)

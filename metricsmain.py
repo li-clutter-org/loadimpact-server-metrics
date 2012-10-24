@@ -46,10 +46,10 @@ def doPing(url, agentname, token):
     return r.json
 
 def doReport(url, agentname, token,label,minValue,maxValue,avgValue,stdDevValue,medianValue,count,unit):
-    j = json.dumps({'name':agentname,'version':PROTOCOLVERSION,'label':label, 'minValue':minValue, 'maxValue':maxValue, 'avgValue':avgValue, 'stdDevValue':stdDevValue,'medianValue':medianValue,'count':count, 'unit': unit}, indent=4)
+    j = json.dumps({'name':agentname,'version':PROTOCOLVERSION,'label':label, 'min':minValue, 'max':maxValue, 'avg':avgValue, 'stdDevValue':stdDevValue,'medianValue':medianValue,'count':count, 'unit': unit}, indent=4)
     logging.debug(j)
     r = requests.put(url, data=j, auth=HTTPBasicAuth(token, ''))
-    if (r.status_code != 200):
+    if (r.status_code != 201):
         # todo: maybe log something useful...
         logging.error(r.status_code)
         raise Exception(r.json) 
@@ -66,6 +66,7 @@ class Scheduler:
         
     def AddTask( self, agenttoken, agentname, cmd, loopdelay, dataurl ):
         task = Task( agenttoken, agentname, cmd, loopdelay, dataurl )
+        task.setDaemon(True)
         self.__tasks.append( task )
     
     def StartAllTasks( self ):
@@ -149,7 +150,7 @@ class Task( threading.Thread ):
     def reportData(self, label, value, unit):
         self.__dataBuffer.append(float(value))
         # more than 60 secs since last report?
-        if( (self.__lastReportTime + 59) < time.time() ):
+        if( (self.__lastReportTime + 10) < time.time() ):
             try:
                 vCount = len(self.__dataBuffer)
                 # avg value
@@ -263,6 +264,7 @@ class Task( threading.Thread ):
 if __name__ == "__main__":      # if started from shell
     print 'press the Any Key to stop me'
     mainLupe = PingLoop()
+    mainLupe.setDaemon(True)
     mainLupe.start()
     raw_input() # run until keypress...
     print 'ok ok'

@@ -14,7 +14,7 @@ class MetricService(win32serviceutil.ServiceFramework):
         win32serviceutil.ServiceFramework.__init__(self,args)
         # listen for a stop request
         self.hWaitStop = win32event.CreateEvent(None, 0, 0, None)
-    
+
     def SvcDoRun(self):
         import servicemanager
         rc = None
@@ -31,6 +31,6 @@ class MetricService(win32serviceutil.ServiceFramework):
         self.mainLupe.stop()
         self.mainLupe.join()
         win32event.SetEvent(self.hWaitStop)
-        
+
 if __name__ == '__main__':
     win32serviceutil.HandleCommandLine(MetricService)

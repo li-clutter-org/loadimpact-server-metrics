@@ -33,6 +33,9 @@ CONFIG_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                            'servermetrics.cfg')
 PROTOCOL_VERSION = "1"
 AGENT_VERSION = "0.07"
+AGENT_USER_AGENT_STRING = ("LoadImpactServerMetricsAgent/%s "
+                           "(Load Impact; http://loadimpact.com);"
+                           % AGENT_VERSION)
 DEFAULT_SERVER_METRICS_API_URL = 'http://api.loadimpact.com/v2/server-metrics'
 DEFAULT_POLL_RATE = 30
 DEFAULT_SAMPLING_INTERVAL = 3
@@ -102,6 +105,7 @@ class ApiClient(object):
             headers = {} if not isinstance(headers, dict) else headers
             if 'Authorization' not in headers:
                 headers['Authorization'] = self._build_auth()
+            headers['User-Agent'] = AGENT_USER_AGENT_STRING
 
             self.conn.request(method, self.parsed_api_url.path, data, headers)
             resp = self.conn.getresponse()

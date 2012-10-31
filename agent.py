@@ -458,8 +458,8 @@ class AgentLoop(object):
 
         self.scheduler.start()
         self.running = True
-
         execution_time = time.time()
+
         try:
             while self.running:
                 start = time.time()
@@ -492,7 +492,7 @@ class AgentLoop(object):
                                           % str(j['state']))
 
                         try:
-                            poll_rate = int(j['poll_rate'])
+                            self.poll_rate = int(j['poll_rate'])
                         except KeyError:
                             logging.error("'poll_rate' not found in JSON "
                                           "response")
@@ -506,7 +506,7 @@ class AgentLoop(object):
                 except Exception:
                     log_dump()
                 finally:
-                    execution_time += max(10, min(3600, poll_rate))
+                    execution_time += max(10, min(3600, self.poll_rate))
                     time.sleep(max(0, execution_time - start))
             self.scheduler.stop()
         except KeyboardInterrupt:

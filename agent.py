@@ -463,39 +463,42 @@ class AgentLoop(object):
                     # Poll server to see if we should switch state (start or
                     # stop sending collected data to server) or alter poll rate.
                     status, body = self.client.poll()
-                    if 200 != status:
-                        logging.error("%d status code returned when "
-                                      "polling server API for state: \"%s\""
-                                      % (status, repr(body)))
-                    j = json.loads(body)
+                    if 200 == status:
+                        j = json.loads(body)
 
-                    try:
-                        if j['state'] != self.state:
-                            try:
-                                state = int(j['state'])
+                        try:
+                            state = int(j['state'])
+                            if state != self.state:
+                                self.state = state
                                 if AgentState.is_valid(state):
                                     for task in self.scheduler.tasks:
                                         task.set_state(state)
-                                    logging.debug("switching state to %s (%d)"
-                                                  % (AgentState.get_name(state),
-                                                     state))
+                                    state_name = AgentState.get_name(state)
+                                    logging.debug("switching state to %s "
+                                                  "(%d)"
+                                                  % (state_name, state))
                                 else:
-                                    logging.error("received invalid state from "
-                                                  "server: %d" % state)
-                            except ValueError:
-                                logging.error("type coercion failed: 'state' "
-                                              "(\"%s\") to int"
-                                              % str(j['state']))
-                    except KeyError:
-                        logging.error("'state' not found in JSON response")
+                                    logging.error("received invalid state "
+                                                  "from server: %d" % state)
+                        except KeyError:
+                            logging.error("'state' not found in JSON response")
+                        except ValueError:
+                            logging.error("type coercion failed: 'state' "
+                                          "(\"%s\") to int"
+                                          % str(j['state']))
 
-                    try:
-                        poll_rate = int(j['poll_rate'])
-                    except KeyError:
-                        logging.error("'poll_rate' not found in JSON response")
-                    except ValueError:
-                        logging.error("type coercion failed: 'poll_rate' "
-                                      "(\"%s\") to int" % str(j['state']))
+                        try:
+                            poll_rate = int(j['poll_rate'])
+                        except KeyError:
+                            logging.error("'poll_rate' not found in JSON "
+                                          "response")
+                        except ValueError:
+                            logging.error("type coercion failed: 'poll_rate' "
+                                          "(\"%s\") to int" % str(j['state']))
+                    else:
+                        logging.error("%d status code returned when "
+                                      "polling server API for state: \"%s\""
+                                      % (status, repr(body)))
                 except Exception:
                     log_dump()
                 finally:

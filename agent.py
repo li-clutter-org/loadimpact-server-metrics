@@ -13,6 +13,7 @@ import logging.config
 import logging.handlers
 import math
 import os
+import Queue
 import re
 import socket
 import subprocess
@@ -128,20 +129,24 @@ class ApiClient(object):
                              headers={'Content-Type': 'application/json'},
                              data=json.dumps(data))
 
-    def push(self, label, vmin, vmax, avg, stddev, median, count, unit):
-        data = {
-            'name': self.agent_name,
-            'version': PROTOCOL_VERSION,
-            'version_agent': AGENT_VERSION,
-            'label': label,
-            'min': vmin,
-            'max': vmax,
-            'avg': avg,
-            'stddev': stddev,
-            'median': median,
-            'count': count,
-            'unit': unit
-        }
+    def push_batch(self, batch):
+        data = []
+        for x in batch:
+            metric = {
+                'name': self.agent_name,
+                'version': PROTOCOL_VERSION,
+                'version_agent': AGENT_VERSION,
+                'label': x[0],
+                'min': x[1],
+                'max': x[2],
+                'avg': x[3],
+                'stddev': x[4],
+                'median': x[5],
+                'count': x[6],
+                'unit': x[7]
+            }
+            data.append(metric)
+
         logging.debug(json.dumps(data))
         return self._request('PUT',
                              headers={'Content-Type': 'application/json'},
@@ -178,14 +183,49 @@ class Scheduler(object):
             task.join(timeout=timeout)
 
 
+class Reporting(threading.Thread):
+    """
+    Thread responsible for sending result data back to the API.
+    """
+    def __init__(self, queue, client):
+        threading.Thread.__init__(self)
+
+        self.queue = queue
+        self.client = client
+
+        self.running = True
+
+    def stop(self):
+        self.running = False
+
+    def run(self):
+        while self.running:
+            batch = []
+            for i in range(0, 10):
+                try:
+                    data = self.queue.get_nowait()
+                    batch.append(data)
+                except Queue.Empty:
+                    break
+
+            if len(batch):
+                status, body = self.client.push_batch(batch)
+                if 201 != status:
+                    logging.error("%d status code returned when pushing data "
+                                  "to server: \"%s\"" % (status, repr(body)))
+
+            time.sleep(2)
+
+
 class Task(threading.Thread):
     """A task thread is responsible for collection and reporting of a single
     metric. The metric can be one of the built-in ones or a Nagios-compatible
     plugin that is executed as a sub-process.
     """
 
-    def __init__(self, client, cmd, sampling_interval, data_push_interval):
+    def __init__(self, queue, client, cmd, sampling_interval, data_push_interval):
         threading.Thread.__init__(self)
+        self.queue = queue
         self.client = client
         self.cmd = cmd
         self.sampling_interval = sampling_interval
@@ -242,12 +282,13 @@ class Task(threading.Thread):
         self.buffer.append(float(value))
         if (self.last_push + self.data_push_interval) < time.time():
             try:
-                vmin, vmax, avg, stddev, median, count = self._prepare_data()
-                status, body = self.client.push(label, vmin, vmax, avg, stddev,
-                                                median, count, unit)
-                if 201 != status:
-                    logging.error("%d status code returned when pushing data "
-                                  "to server: \"%s\"" % (status, repr(body)))
+                data = self._prepare_data()
+                data = (label,) + data + (unit,)
+
+                try:
+                    self.queue.put_nowait(data)
+                except Queue.Full:
+                    pass  # Ignore data
 
                 self.last_push = time.time()
                 self.buffer = []
@@ -334,6 +375,7 @@ class NetworkMetricTask(BuiltinMetricTask):
         self.prev_sent = 0
 
     def _next_line_builtin(self, args):
+        interface = ""
         if len(args) > 1:
             interface = args[1].replace("'", "")
             counters = psutil.network_io_counters(pernic=True)
@@ -343,6 +385,8 @@ class NetworkMetricTask(BuiltinMetricTask):
                 logging.error("incorrect network interface name: "
                               "\"%s\"" % interface)
                 return None
+            # Format for label name in the report line below
+            interface = " " + interface
         else:
             counters = psutil.network_io_counters(pernic=False)
         sent = counters.bytes_sent
@@ -353,8 +397,8 @@ class NetworkMetricTask(BuiltinMetricTask):
         self.prev_sent = sent
         self.prev_recv = recv
         kbps = total / self.sampling_interval / 1024
-        line = ("%s over %s sec|Network=%.2fkB/s"
-                % (total, self.sampling_interval, kbps))
+        line = ("%s over %s sec|Network%s=%.2fkB/s"
+                % (total, self.sampling_interval, interface, kbps))
         return line
 
 
@@ -419,6 +463,10 @@ class AgentLoop(object):
 
         self.client = ApiClient(agent_name, api_token, api_url)
         self.scheduler = Scheduler()
+        self.queue = Queue.Queue()
+
+        self.reporter = Reporting(self.queue, self.client)
+        self.reporter.setDaemon(True)
 
     def _parse_commands(self):
         # Configuration options named 'command' are our tasks.
@@ -430,7 +478,7 @@ class AgentLoop(object):
                         cmd_args = [s for s in re.split(r'( |".*?"|\'.*?\')',
                                                         cmd) if s.strip()][1:]
                         cmd = cmd_args[0].lower()
-                        args = (self.client, ' '.join(cmd_args),
+                        args = (self.queue, self.client, ' '.join(cmd_args),
                                 self.sampling_interval,
                                 self.data_push_interval)
                         if 'cpu' == cmd:
@@ -445,7 +493,7 @@ class AgentLoop(object):
                             logging.warning("unknown built-in command: \"%s\""
                                             % args[0])
                     else:
-                        self.scheduler.add_task(Task(cmd,
+                        self.scheduler.add_task(Task(self.queue, self.client, cmd,
                                                      self.sampling_interval,
                                                      self.data_push_interval))
         except Exception:
@@ -456,6 +504,7 @@ class AgentLoop(object):
     def run(self):
         self._parse_commands()
 
+        self.reporter.start()
         self.scheduler.start()
         self.running = True
         execution_time = time.time()

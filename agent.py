@@ -72,22 +72,33 @@ class ApiClient(object):
     state it will not.
     """
 
-    def __init__(self, agent_name, api_token, api_url):
+    def __init__(self, agent_name, api_token, api_url, proxy_url=None):
         self.agent_name = agent_name
         self.api_token = api_token
         self.parsed_api_url = urlparse.urlparse(api_url)
+        self.parsed_proxy_url = urlparse.urlparse(proxy_url) if proxy_url else None
         self.state = AgentState.IDLE
         self.conn = None
         self.lock = threading.Lock()
 
-    def _build_auth(self):
-        return 'Basic %s' % base64.b64encode('%s:%s' % (self.api_token, ''))
+    def _build_auth(self, username, password=''):
+        return 'Basic %s' % base64.b64encode('%s:%s' % (username, password))
 
     def _connect(self):
         if not self.conn:
             port = self.parsed_api_url.port if self.parsed_api_url.port else 443
             self.conn = httplib.HTTPSConnection(self.parsed_api_url.hostname,
                                                 port=port)
+            if self.parsed_proxy_url:
+                headers = {}
+                if self.parsed_proxy_url.username:
+                    username = self.parsed_proxy_url.username
+                    password = self.parsed_proxy_url.password
+                    headers['Proxy-Authentication'] = self._build_auth(username,
+                                                                       password)
+                self.conn.set_tunnel(self.parsed_proxy_url.hostname,
+                                     port=self.parsed_proxy_url.port,
+                                     headers=headers)
 
     def _close(self):
         if self.conn:
@@ -105,7 +116,7 @@ class ApiClient(object):
 
             headers = {} if not isinstance(headers, dict) else headers
             if 'Authorization' not in headers:
-                headers['Authorization'] = self._build_auth()
+                headers['Authorization'] = self._build_auth(self.api_token)
             headers['User-Agent'] = AGENT_USER_AGENT_STRING
 
             self.conn.request(method, self.parsed_api_url.path, data, headers)
@@ -449,6 +460,10 @@ class AgentLoop(object):
             self.config.get('General', 'server_metrics_api_url')
             if self.config.has_option('General', 'server_metrics_api_url')
             else DEFAULT_SERVER_METRICS_API_URL)
+        proxy_url = (
+            self.config.get('General', 'proxy_url')
+            if self.config.has_option('General', 'proxy_url')
+            else None)
         self.poll_rate = (self.config.get('General', 'poll_rate')
                           if self.config.has_option('General', 'poll_rate')
                           else DEFAULT_POLL_RATE)
@@ -461,12 +476,12 @@ class AgentLoop(object):
             if self.config.has_option('General', 'data_push_interval')
             else DEFAULT_DATA_PUSH_INTERVAL)
 
-        self.client = ApiClient(agent_name, api_token, api_url)
+        self.client = ApiClient(agent_name, api_token, api_url, proxy_url)
         self.scheduler = Scheduler()
         self.queue = Queue.Queue()
 
         self.reporter = Reporting(self.queue, self.client)
-        self.reporter.setDaemon(True)
+        self.reporter.daemon = True
 
     def _parse_commands(self):
         # Configuration options named 'command' are our tasks.
@@ -493,7 +508,8 @@ class AgentLoop(object):
                             logging.warning("unknown built-in command: \"%s\""
                                             % args[0])
                     else:
-                        self.scheduler.add_task(Task(self.queue, self.client, cmd,
+                        self.scheduler.add_task(Task(self.queue, self.client,
+                                                     cmd,
                                                      self.sampling_interval,
                                                      self.data_push_interval))
         except Exception:

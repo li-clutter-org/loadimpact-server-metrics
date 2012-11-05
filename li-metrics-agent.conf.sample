@@ -6,7 +6,7 @@ agent_name = myagent
 server_metrics_api_token = SERVER_METRICS_API_TOKEN
 
 # server_metrics_api_url - don't change this unless you have a good reason
-server_metrics_api_url = http://api.loadimpact.com/v2/server-metrics
+server_metrics_api_url = https://api.loadimpact.com/v2/server-metrics
 
 # Built-in CPU 
 [test1]

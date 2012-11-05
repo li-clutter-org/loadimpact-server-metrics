@@ -1,0 +1,19 @@
+Package: li-metrics-agent
+Version: 1.0-1
+Architecture: all
+Maintainer: Load Impact <support@loadimpact.com>
+Installed-Size: 96
+Depends: python2.7 (>= 2.7), python-psutil (>= 0.4.1)
+Provides: servermetrics
+Section: net
+Priority: optional
+Multi-Arch: foreign
+Homepage: http://loadimpact.com
+Description: Load Impact Server Metrics Agent
+ Collect and transfer server monitoring data during load testing with Load Impact
+ .
+ The Load Impact Server Metrics Agent allows you to automatically monitor performance metrics
+ on your servers during a load test. The monitoring data will be sent to Load Impact in real time
+ during the load test, and you will be able to plot graphs for e.g. CPU usage on your server(s) 
+ .
+ To get more information please visit http://loadimpact.com

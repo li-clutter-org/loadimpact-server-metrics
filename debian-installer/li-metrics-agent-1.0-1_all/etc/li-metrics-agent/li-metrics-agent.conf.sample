@@ -1,0 +1,64 @@
+[General]
+# agent_name - hostname or any other identifier for this server, choose wisely
+agent_name = myagent
+
+# server_metrics_api_token - assigned to your account on loadimpact.com
+server_metrics_api_token = SERVER_METRICS_API_TOKEN
+
+# server_metrics_api_url - don't change this unless you have a good reason
+server_metrics_api_url = https://api.loadimpact.com/v2/server-metrics
+
+# Built-in CPU 
+[test1]
+command = BUILTIN CPU
+
+# Built-in memory 
+[test2]
+command = BUILTIN MEMORY
+
+# Built-in network performance
+# optional: specify a network interface. for Windows, this is the name given to the interface,
+# i.e. 'Local Area Connection' (use quotes when name contains space).  
+# For *nix, use the device name, i.e. 'eth0'
+[test3]
+command = BUILTIN NETWORK
+#
+#command = BUILTIN NETWORK 'Local Data Connection'
+#command = BUILTIN NETWORK eth0
+
+#
+# an external script, needs to output data like a Nagios plugin
+#[test4]
+#command = /foo/bar/mycpuload.py
+
+# logging to the file servermetrics.log by default
+[loggers]
+keys=root
+
+[logger_root]
+handlers=file
+level=DEBUG
+
+[formatters]
+keys=simple,complex
+
+[formatter_simple]
+format=%(asctime)s - %(name)s - %(levelname)s - %(message)s
+
+[formatter_complex]
+format=%(asctime)s - %(name)s - %(levelname)s - %(module)s : %(lineno)d - %(message)s
+
+[handlers]
+keys=file
+
+[handler_file]
+class=handlers.TimedRotatingFileHandler
+interval=midnight
+backupCount=5
+formatter=simple
+level=DEBUG
+#
+# use a full path to the log file, make sure the account running the service
+# have read/write permissions 
+#
+args=('server_metrics_agent.log',)

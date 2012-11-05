@@ -1,0 +1,95 @@
+#!/bin/sh
+
+ls -s /etc/init.d/li-metrics-agent /etc/rc2.d/S99li-metrics-agent
+
+CONF_FILE=/etc/li-metrics-agent/li-metrics-agent.conf
+SAMPLE_CONF_FILE=/etc/li-metrics-agent/li-metrics-agent.conf.sample
+AGENT_NAME=`hostname`
+TOKEN=""
+HAS_AGENT_NAME_CONF="no"
+HAS_TOKEN_CONF="no"
+
+if [ -f ${CONF_FILE} ]; then
+  if grep "^agent_name" ${CONF_FILE} >/dev/null ; then
+    AGENT_NAME=`grep "^agent_name" ${CONF_FILE} |awk -F\= '{print $2}' |awk '{print $1}'`
+    HAS_AGENT_NAME_CONF="yes"
+  fi
+  if grep "^server_metrics_api_token" ${CONF_FILE} >/dev/null ; then
+    TOKEN=`grep "^server_metrics_api_token" ${CONF_FILE} |awk -F\= '{print $2}' |awk '{print $1}'`
+    HAS_TOKEN_CONF="yes"
+  fi
+fi
+
+/bin/echo ""
+/bin/echo "--- AGENT NAME ---"
+/bin/echo "You have to enter a unique name identifying this agent. This name will be"
+/bin/echo "displayed in the Load Impact user interface, and allow you to enable/disable"
+/bin/echo "server metrics data collection for this particular host."
+/bin/echo ""
+
+while true 
+do
+  /bin/echo "Current name for this agent is: ${AGENT_NAME}"
+  /bin/echo -n "Do you want to change the name? (y/N): "
+  read ans
+  if [ "${ans}x" = "yx" ]; then
+    /bin/echo -n "Enter new agent name: "
+    read AGENT_NAME
+    /bin/echo ""
+  else
+    break
+  fi
+done
+
+/bin/echo ""
+/bin/echo "--- SERVER METRICS TOKEN ---"
+/bin/echo "You also have to tell this agent what your Load Impact server metrics token is."
+/bin/echo "The token is a secret hash that the agent sends together with measurement data"
+/bin/echo "to Load Impact, to authenticate itself as a legitimate agent. If you do not "
+/bin/echo "enter a token, or enter the wrong token, your agent will not be able to send"
+/bin/echo "any data to Load Impact."
+/bin/echo ""
+/bin/echo "You can find out what your token is by visiting https://loadimpact.com/account/"
+/bin/echo ""
+
+while true 
+do
+  if [ "${TOKEN}x" = "x" ]; then
+    /bin/echo "Current token is: [none]"
+    ans="y"
+  else
+    /bin/echo "Current token is: ${TOKEN}"
+    /bin/echo -n "Do you want to change the token string? (y/N): "
+    read ans
+  fi
+  if [ "${ans}x" = "yx" ]; then
+    /bin/echo -n "Enter token string: "
+    read TOKEN
+    /bin/echo ""
+  else
+    break
+  fi
+done
+
+
+TMPFILE=/tmp/li-metrics-agent.conf
+cp -f ${CONF_FILE} ${CONF_FILE}.bak
+
+if [ "${HAS_AGENT_NAME_CONF}" = "yes" ]; then
+  sed 's/^agent_name.*/agent_name \= '"${AGENT_NAME}/" ${CONF_FILE} >${TMPFILE}
+else
+  sed 's/^agent_name.*/agent_name \= '"${AGENT_NAME}/" ${SAMPLE_CONF_FILE} >${TMPFILE}
+fi
+
+sed 's/^server_metrics_api_token.*/server_metrics_api_token \= '"${TOKEN}/" ${TMPFILE} >${CONF_FILE}
+
+if [ ! "${HAS_TOKEN_CONF}" = "yes" ]; then
+  echo "server_metrics_api_token = ${TOKEN}" >>${CONF_FILE}
+fi
+
+/bin/echo ""
+/bin/echo -n "Starting li-metrics-agent..."
+
+#nohup python /usr/lib/li-metrics-agent/li-metric-agent.py >/var/log/li-metrics-agent.log 2>&1 &
+
+/bin/echo "ok"

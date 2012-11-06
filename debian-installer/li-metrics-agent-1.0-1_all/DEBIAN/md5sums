@@ -1,3 +1,0 @@
-679b2b9b10ce88d233bfb393ed68e5b4  ./etc/init.d/li-metrics-agent
-caaff1a6147ec0db825fa66ef0725034  ./etc/li-metrics-agent/li-metrics-agent.conf.sample
-f5f03eca1bb0c764e26a7597bd6f190c  ./usr/lib/li-metrics-agent/li-metrics-agent.py

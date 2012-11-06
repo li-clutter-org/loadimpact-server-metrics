@@ -13,8 +13,8 @@ PATH=/sbin:/usr/sbin:/bin:/usr/bin
 PYTHON=$(which python)
 DESC="Load Impact Server Metrics Agent"
 NAME=li-metrics-agent
-DAEMON=/usr/lib/${NAME}/${NAME}.py
-DAEMON_ARGS=""
+DAEMON=$PYTHON
+DAEMON_ARGS=/usr/lib/${NAME}/${NAME}.py
 PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
 CONFFILE=/etc/$NAME/$NAME.conf
@@ -23,7 +23,7 @@ CONFFILE=/etc/$NAME/$NAME.conf
 . /lib/lsb/init-functions
 
 check_start() {
-  [ -x $CONFFILE ] || (echo "Please configure ${NAME}, See: ${CONFFILE}" && exit 1)
+  [ ! -s $CONFFILE ] || (echo "Please configure ${NAME}, See: ${CONFFILE}" && exit 1)
 }
 
 case "$1" in
@@ -31,7 +31,7 @@ case "$1" in
         check_start
         log_daemon_msg "Starting $DESC" "$NAME"
         start-stop-daemon --start --quiet --pidfile "$PIDFILE" \
-                --exec "$PYTHON $DAEMON" --oknodo -- $DAEMON_ARGS
+                --exec "$PYTHON" --oknodo -- $DAEMON_ARGS
         log_end_msg $?
         ;;
     restart|reload|force-reload)

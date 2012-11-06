@@ -73,7 +73,7 @@ done
 
 
 TMPFILE=/tmp/li-metrics-agent.conf
-cp -f ${CONF_FILE} ${CONF_FILE}.bak
+[ -f ${CONF_FILE} ] && cp -f ${CONF_FILE} ${CONF_FILE}.bak
 
 if [ "${HAS_AGENT_NAME_CONF}" = "yes" ]; then
   sed 's/^agent_name.*/agent_name \= '"${AGENT_NAME}/" ${CONF_FILE} >${TMPFILE}
@@ -87,9 +87,6 @@ if [ ! "${HAS_TOKEN_CONF}" = "yes" ]; then
   echo "server_metrics_api_token = ${TOKEN}" >>${CONF_FILE}
 fi
 
-/bin/echo ""
-/bin/echo -n "Starting li-metrics-agent..."
+[ -d /usr/lib/li-metrics-agent ] && ln -s ${CONF_FILE} /usr/lib/li-metrics-agent/li-metrics-agent.conf
 
-#nohup python /usr/lib/li-metrics-agent/li-metric-agent.py >/var/log/li-metrics-agent.log 2>&1 &
-
-/bin/echo "ok"
+/etc/init.d/li-metrics-agent start

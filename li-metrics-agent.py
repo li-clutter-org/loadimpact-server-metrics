@@ -21,7 +21,9 @@ import sys
 import threading
 import time
 import traceback
-import urlparse
+
+from collections import defaultdict
+from urlparse import urlparse
 
 try:
     import psutil
@@ -75,8 +77,8 @@ class ApiClient(object):
     def __init__(self, agent_name, api_token, api_url, proxy_url=None):
         self.agent_name = agent_name
         self.api_token = api_token
-        self.parsed_api_url = urlparse.urlparse(api_url)
-        self.parsed_proxy_url = urlparse.urlparse(proxy_url) if proxy_url else None
+        self.parsed_api_url = urlparse(api_url)
+        self.parsed_proxy_url = urlparse(proxy_url) if proxy_url else None
         self.state = AgentState.IDLE
         self.conn = None
         self.lock = threading.Lock()
@@ -234,7 +236,8 @@ class Task(threading.Thread):
     plugin that is executed as a sub-process.
     """
 
-    def __init__(self, queue, client, cmd, sampling_interval, data_push_interval):
+    def __init__(self, queue, client, cmd, sampling_interval,
+                 data_push_interval):
         threading.Thread.__init__(self)
         self.queue = queue
         self.client = client
@@ -371,23 +374,41 @@ class MemoryMetricTask(BuiltinMetricTask):
                                                       phymem.percent)
 
 
-class NetworkMetricTask(BuiltinMetricTask):
-    """Built-in metric task to measure network utilization metrics:
-        - Kbps
-        - Receive/Sent bytes delta
-        - Receive/Sent packets delta
-        - Receive/Sent errors delta
-        - Receive/Sent drop delta
-    """
+class RateBasedMetrics(BuiltinMetricTask):
+    """Base class for built-in metric tasks that are rate-based."""
 
     def __init__(self, *args, **kwargs):
-        super(NetworkMetricTask, self).__init__(*args, **kwargs)
-        self.prev_recv = 0
-        self.prev_sent = 0
+        super(RateBasedMetrics, self).__init__(*args, **kwargs)
+        self.prev = defaultdict(int)
 
+    def _calculate_total(self, current, prev):
+        total = 0
+        p = self.prev[prev]
+        if p > 0:
+            total = current - p
+        self.prev[prev] = current
+        return total
+
+    def _calculate_total2(self, sent, prev_sent, recv, prev_recv):
+        total = 0
+        prevs = self.prev[prev_sent]
+        prevr = self.prev[prev_recv]
+        if prevs > 0:
+            total = (sent - prevs) + (recv - prevr)
+        self.prev[prev_sent] = sent
+        self.prev[prev_recv] = recv
+        return total
+
+
+class NetworkMetricTask(RateBasedMetrics):
+    """Built-in metric task to measure network utilization metrics:
+        - Bps (total, in and out)
+        - Packets/s (total, in and out)
+    """
     def _next_line_builtin(self, args):
+        valid_metrics = ['bps', 'bps-in', 'bps-out', 'pps', 'pps-in', 'pps-out']
         interface = ""
-        if len(args) > 1:
+        if len(args) > 1 and args[1].lower() not in valid_metrics:
             interface = args[1].replace("'", "")
             counters = psutil.network_io_counters(pernic=True)
             try:
@@ -400,46 +421,93 @@ class NetworkMetricTask(BuiltinMetricTask):
             interface = " " + interface
         else:
             counters = psutil.network_io_counters(pernic=False)
-        sent = counters.bytes_sent
-        recv = counters.bytes_recv
-        total = 0
-        if self.prev_sent > 0:
-            total = (sent - self.prev_sent) + (recv - self.prev_recv)
-        self.prev_sent = sent
-        self.prev_recv = recv
-        kbps = total / self.sampling_interval / 1024
-        line = ("%s over %s sec|Network%s=%.2fkB/s"
-                % (total, self.sampling_interval, interface, kbps))
+
+        metric = 'bps'
+        metric_index = 2 if interface else 1
+        if len(args) > metric_index:
+            metric = args[metric_index].lower()
+            if metric not in valid_metrics:
+                metric = 'bps'
+
+        if metric == 'bps':
+            total = self._calculate_total2(counters.bytes_sent, 'bytes_sent',
+                                           counters.bytes_recv, 'bytes_recv')
+        elif metric == 'bps-in':
+            total = self._calculate_total(counters.bytes_recv, 'bytes_recv')
+        elif metric == 'bps-out':
+            total = self._calculate_total(counters.bytes_sent, 'bytes_sent')
+        elif metric == 'pps':
+            total = self._calculate_total2(counters.packets_sent,
+                                           'packets_sent',
+                                           counters.packets_recv,
+                                           'packets_recv')
+        elif metric == 'pps-in':
+            total = self._calculate_total(counters.packets_recv, 'packets_recv')
+        elif metric == 'pps-out':
+            total = self._calculate_total(counters.packets_sent, 'packets_sent')
+
+        metric_ps = total / self.sampling_interval / 1024
+        line = ("%s over %s sec|Network%s=%.2f%s"
+                % (total, self.sampling_interval, interface, metric_ps, metric))
+
         return line
 
 
-class DiskMetricTask(BuiltinMetricTask):
+class DiskMetricTask(RateBasedMetrics):
     """Built-in metric task to measure disk utilization metrics:
-        - IOps
-        - Read/Write count delta
-        - Read/Write bytes delta
-        - Read/Write time delta
+        - IOps (total, in and out)
+        - Bps (total, in and out)
+        - Usage (used space in percent)
     """
-
-    def __init__(self, *args, **kwargs):
-        super(DiskMetricTask, self).__init__(*args, **kwargs)
-        self.prev_read_count = 0
-        self.prev_write_count = 0
-
     def _next_line_builtin(self, args):
-        counters = psutil.disk_io_counters()
-        read_count = counters.read_count
-        write_count = counters.write_count
-        total = 0
-        if self.prev_read_count > 0:
-            total = ((write_count - self.prev_write_count)
-                     + (read_count - self.prev_read_count))
-        self.prev_write_count = write_count
-        self.prev_read_count = read_count
-        iops = total / self.sampling_interval
-        line = ("Disk IOPS %d over %s sec|Disk=%.2fIO/s"
-                % (total, self.sampling_interval, iops))
-        return line
+        valid_metrics = ['iops', 'ips', 'ops', 'bps', 'bps-in', 'bps-out',
+                         'used']
+
+        metric = 'iops'
+        if len(args) > 1:
+            metric = args[1].lower()
+            if metric not in valid_metrics:
+                metric = 'iops'
+
+        if metric == 'used':
+            path = '/' if len(args) < 3 else args[2].replace("'", "")
+            try:
+                usage = psutil.disk_usage(path)
+                total = usage.percent
+            except OSError:
+                logging.error("disk usage: path \"%s\" not found" % path)
+                return None
+
+            return ("Disk usage for %s|Disk=%.2f%%" % (path, total))
+        else:
+            counters = psutil.disk_io_counters()
+            if metric == 'iops':
+                total = self._calculate_total2(counters.write_count,
+                                               'write_count',
+                                               counters.read_count,
+                                               'read_count')
+            elif metric == 'ips':
+                total = self._calculate_total(counters.read_count,
+                                              'read_count')
+            elif metric == 'ops':
+                total = self._calculate_total(counters.write_count,
+                                              'write_count')
+            elif metric == 'bps':
+                total = self._calculate_total2(counters.write_bytes,
+                                               'write_bytes',
+                                               counters.read_bytes,
+                                               'read_bytes')
+            elif metric == 'bps-in':
+                total = self._calculate_total(counters.read_bytes,
+                                              'read_bytes')
+            elif metric == 'bps-out':
+                total = self._calculate_total(counters.write_bytes,
+                                              'write_bytes')
+
+            metric_ps = total / self.sampling_interval
+            line = ("Disk %d over %s sec|Disk=%.2f%s"
+                    % (total, self.sampling_interval, metric_ps, metric))
+            return line
 
 
 class AgentLoop(object):
@@ -448,14 +516,25 @@ class AgentLoop(object):
     """
 
     def __init__(self):
-        logging.config.fileConfig(CONFIG_FILE)
+        try:
+            logging.config.fileConfig(CONFIG_FILE)
+        except ConfigParser.NoSectionError:
+            # We ignore any parsing error of logging configuration variables.
+            pass
 
         self.running = False
         self.state = AgentState.IDLE
         self.config = ConfigParser.ConfigParser()
         self.config.read(CONFIG_FILE)
-        agent_name = self.config.get('General', 'agent_name')
-        api_token = self.config.get('General', 'server_metrics_api_token')
+        try:
+            agent_name = self.config.get('General', 'agent_name')
+            api_token = self.config.get('General', 'server_metrics_api_token')
+        except ConfigParser.NoSectionError:
+            logging.error("agent name (agent_name) and API token "
+                          "(server_metrics_api_token) are mandatory "
+                          "configuration variables under the \"General\" "
+                          "section")
+            sys.exit(1)
         api_url = (
             self.config.get('General', 'server_metrics_api_url')
             if self.config.has_option('General', 'server_metrics_api_url')

@@ -8,28 +8,71 @@ server_metrics_api_token = SERVER_METRICS_API_TOKEN
 # server_metrics_api_url - don't change this unless you have a good reason
 server_metrics_api_url = https://api.loadimpact.com/v2/server-metrics
 
-# Built-in CPU 
+# Built-in CPU usage in percent
 [test1]
-command = BUILTIN CPU
+command = buuiltin cpu
 
-# Built-in memory 
+# Built-in memory usage in percent
 [test2]
-command = BUILTIN MEMORY
+command = builtin memory
 
 # Built-in network performance
-# optional: specify a network interface. for Windows, this is the name given to the interface,
-# i.e. 'Local Area Connection' (use quotes when name contains space).  
-# For *nix, use the device name, i.e. 'eth0'
+#
+# Usage:
+#     builtin network [interface] [metric]
+#
+#     optional: network interface, for Windows, this is the name given to
+#               the interface, i.e. 'Local Area Connection' (use quotes when 
+#               name contains space), for *nix, use the device name, i.e. 
+#               'eth0'. If not specified will measure metric across all network
+#               interfaces.
+#
+#     optional: metric name (defaults to bps), one of:
+#               - bps (bytes/s total)
+#               - bps-in (received bytes/s)
+#               - bps-out (sent bytes/s)
+#               - pps (packets/s total)
+#               - pps-in (received packets/s)
+#               - pps-out (sent packets/s)
+#
+# Examples:
+#     builtin network
+#     builtin network bps
+#     builtin network pps
+#     builtin network eth0 bps
+#     builtin network 'Local Data Connection' pps
 [test3]
-command = BUILTIN NETWORK
-#
-#command = BUILTIN NETWORK 'Local Data Connection'
-#command = BUILTIN NETWORK eth0
+command = builtin network
 
+# Built-in disk performance
 #
-# an external script, needs to output data like a Nagios plugin
-#[test4]
-#command = /foo/bar/mycpuload.py
+# Usage:
+#     builtin disk [metric] [path]
+#
+#     optional: metric name (defaults to bps), one of:
+#               - iops (IO/s total)
+#               - ips (In/s)
+#               - ops (Out/s)
+#               - bps (bytes/s total)
+#               - bps-in (read bytes/s)
+#               - bps-out (write bytes/s)
+#               - used (usage percentage)
+#
+#     optional: path, optional path for "used" metric, defaults to "/".
+#
+# Examples:
+#     builtin disk
+#     builtin disk iops
+#     builtin disk bps
+#     builtin disk used
+#     builtin disk used '/'
+#     builtin disk used '/var/log'
+[test4]
+command = BUILTIN DISK used
+
+# An external script, needs to output data like a Nagios plugin
+#[test5]
+#command = /path/to/myscript.py
 
 # logging to the file servermetrics.log by default
 [loggers]

@@ -1,9 +1,9 @@
 #!/bin/sh
 
-ls -s /etc/init.d/li-metrics-agent /etc/rc2.d/S99li-metrics-agent
+ls -s /etc/init.d/li_metrics_agent /etc/rc2.d/S99li_metrics_agent
 
-CONF_FILE=/etc/li-metrics-agent/li-metrics-agent.conf
-SAMPLE_CONF_FILE=/etc/li-metrics-agent/li-metrics-agent.conf.sample
+CONF_FILE=/etc/li_metrics_agent/li_metrics_agent.conf
+SAMPLE_CONF_FILE=/etc/li_metrics_agent/li_metrics_agent.conf.sample
 AGENT_NAME=`hostname`
 TOKEN=""
 HAS_AGENT_NAME_CONF="no"
@@ -72,7 +72,7 @@ do
 done
 
 
-TMPFILE=/tmp/li-metrics-agent.conf
+TMPFILE=/tmp/li_metrics_agent.conf
 [ -f ${CONF_FILE} ] && cp -f ${CONF_FILE} ${CONF_FILE}.bak
 
 if [ "${HAS_AGENT_NAME_CONF}" = "yes" ]; then
@@ -87,6 +87,6 @@ if [ ! "${HAS_TOKEN_CONF}" = "yes" ]; then
   echo "server_metrics_api_token = ${TOKEN}" >>${CONF_FILE}
 fi
 
-[ -d /usr/lib/li-metrics-agent ] && ln -s ${CONF_FILE} /usr/lib/li-metrics-agent/li-metrics-agent.conf
+[ -d /usr/lib/li_metrics_agent ] && ln -s ${CONF_FILE} /usr/lib/li_metrics_agent/li_metrics_agent.conf
 
-/etc/init.d/li-metrics-agent start
+/etc/init.d/li_metrics_agent start

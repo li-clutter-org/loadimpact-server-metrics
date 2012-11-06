@@ -12,7 +12,7 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
 PYTHON=$(which python)
 DESC="Load Impact Server Metrics Agent"
-NAME=li-metrics-agent
+NAME=li_metrics_agent
 DAEMON=$PYTHON
 DAEMON_ARGS=/usr/lib/${NAME}/${NAME}.py
 PIDFILE=/var/run/$NAME.pid

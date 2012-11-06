@@ -2,7 +2,7 @@ Package: li-metrics-agent
 Version: 1.0-1
 Architecture: all
 Maintainer: Load Impact <support@loadimpact.com>
-Installed-Size: 88
+Installed-Size: 72
 Depends: python2.7 (>= 2.7), python-psutil (>= 0.4.1)
 Provides: servermetrics
 Section: net

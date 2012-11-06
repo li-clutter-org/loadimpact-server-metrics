@@ -23,7 +23,7 @@ CONFFILE=/etc/$NAME/$NAME.conf
 . /lib/lsb/init-functions
 
 check_start() {
-  [ ! -s $CONFFILE ] || (echo "Please configure ${NAME}, See: ${CONFFILE}" && exit 1)
+  [ -s $CONFFILE ] || (echo "Please configure ${NAME}, See: ${CONFFILE}" && exit 1)
 }
 
 case "$1" in

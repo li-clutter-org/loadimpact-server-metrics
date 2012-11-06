@@ -1,7 +1,7 @@
 d41d8cd98f00b204e9800998ecf8427e  li_metrics_agent-1.0-1_all/DEBIAN/md5sums
-f02951e6d74d85b39734da87b6ccabbb  li_metrics_agent-1.0-1_all/DEBIAN/control
+c89074e31f4dc20761e13d1e65c87da8  li_metrics_agent-1.0-1_all/DEBIAN/control
 9fa5c0ad6c96fab161523a98724ee112  li_metrics_agent-1.0-1_all/DEBIAN/postinst
 3de028dff0befb35a3c60dfbeace8a6a  li_metrics_agent-1.0-1_all/DEBIAN/preinst
 6902f9dd028f2f079e4a22bf96743b16  li_metrics_agent-1.0-1_all/etc/li_metrics_agent/li_metrics_agent.conf.sample
-537c6b18706ba5a930078aec9aa00021  li_metrics_agent-1.0-1_all/etc/init.d/li_metrics_agent
-12d00773d5150929426045b39243f994  li_metrics_agent-1.0-1_all/usr/lib/li_metrics_agent.py
+1bfba048c3dbff499a497f0ee48d3f38  li_metrics_agent-1.0-1_all/etc/init.d/li_metrics_agent
+4dfd730a4aaf55d3da70c153d4029f39  li_metrics_agent-1.0-1_all/usr/lib/li_metrics_agent/li_metrics_agent.py

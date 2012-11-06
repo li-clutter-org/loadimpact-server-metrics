@@ -33,7 +33,7 @@ except ImportError:
 
 # Figure out where the config file is located.
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                           'li-metrics-agent.conf')
+                           'li_metrics_agent.conf')
 PROTOCOL_VERSION = "1"
 AGENT_VERSION = "0.07"
 AGENT_USER_AGENT_STRING = ("LoadImpactServerMetricsAgent/%s "

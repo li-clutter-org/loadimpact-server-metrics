@@ -297,7 +297,8 @@ class Reporting(threading.Thread):
     def run(self):
         while self.running:
             batch = []
-            for i in range(0, 10):
+            # Empty queue
+            while True:
                 try:
                     data = self.queue.get_nowait()
                     batch.append(data)
@@ -634,7 +635,7 @@ class AgentLoop(object):
 
         self.client = ApiClient(agent_name, api_token, api_url, proxy_url)
         self.scheduler = Scheduler()
-        self.queue = Queue.Queue()
+        self.queue = Queue.Queue(maxsize=100)
 
         self.reporter = Reporting(self.queue, self.client)
         self.reporter.daemon = True

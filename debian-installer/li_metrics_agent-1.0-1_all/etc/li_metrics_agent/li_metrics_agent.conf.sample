@@ -10,7 +10,7 @@ server_metrics_api_url = https://api.loadimpact.com/v2/server-metrics
 
 # Built-in CPU usage in percent
 [test1]
-command = buuiltin cpu
+command = builtin cpu
 
 # Built-in memory usage in percent
 [test2]
@@ -80,7 +80,6 @@ keys=root
 
 [logger_root]
 handlers=file
-handlers=syslog
 level=DEBUG
 
 [formatters]
@@ -94,7 +93,6 @@ format=%(asctime)s - %(name)s - %(levelname)s - %(module)s : %(lineno)d - %(mess
 
 [handlers]
 keys=file
-keys=syslog
 
 [handler_file]
 class=handlers.TimedRotatingFileHandler
@@ -102,16 +100,26 @@ interval=midnight
 backupCount=5
 formatter=simple
 level=DEBUG
-
-[handler_syslog]
-class=handlers.SysLogHandler
-level=ERROR
-formatter=simple
-args=(('localhost', handlers.SYSLOG_UDP_PORT), handlers.SysLogHandler.LOG_USER)
-
-
 #
 # use a full path to the log file, make sure the account running the service
 # have read/write permissions 
 #
 args=('server_metrics_agent.log',)
+
+
+#
+# Logging to syslog (assuming same formatters as above)
+#
+
+#[logger_root]
+#handlers=syslog
+#level=DEBUG
+
+#[handlers]
+#keys=syslog
+
+#[handler_syslog]
+#class=handlers.SysLogHandler
+#formatter=simple
+#level=DEBUG
+#args=('/dev/log', handlers.SysLogHandler.LOG_SYSLOG)

@@ -1,7 +1,22 @@
 #!/usr/bin/env python
+# coding=utf-8
 
-# This is a workaround for Python versions < 3.0 to get "true division" when
-# using the division operator. "true division" = float result
+"""
+Copyright 2012 Load Impact
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
+
 from __future__ import division
 
 import base64
@@ -12,9 +27,12 @@ import logging
 import logging.config
 import logging.handlers
 import math
+import optparse
 import os
 import Queue
 import re
+import resource
+import signal
 import socket
 import subprocess
 import sys
@@ -31,163 +49,83 @@ except ImportError:
     print "Can't find module psutil"
     sys.exit(1)
 
-# Figure out where the config file is located.
-CONFIG_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                           'li_metrics_agent.conf')
+__author__ = "Load Impact"
+__copyright__ = "Copyright 2012, Load Impact"
+__license__ = "Apache License v2.0"
+__version__ = "0.0.7"
+__email__ = "support@loadimpact.com"
+
+PROGRAM_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
+CONFIG_FILE = os.path.join(PROGRAM_DIR, 'li_metrics_agent.conf')
+if sys.platform.startswith('linux'):
+    PANIC_LOG = '/var/log/li_metrics_panic.log'
+else:
+    PANIC_LOG = os.path.join(PROGRAM_DIR, 'li_metrics_panic.log')
 PROTOCOL_VERSION = "1"
-AGENT_VERSION = "0.07"
 AGENT_USER_AGENT_STRING = ("LoadImpactServerMetricsAgent/%s "
                            "(Load Impact; http://loadimpact.com);"
-                           % AGENT_VERSION)
+                           % __version__)
+
 DEFAULT_SERVER_METRICS_API_URL = 'http://api.loadimpact.com/v2/server-metrics'
 DEFAULT_POLL_RATE = 30
 DEFAULT_SAMPLING_INTERVAL = 3
 DEFAULT_DATA_PUSH_INTERVAL = 10
 
 UMASK = 0
-WORKDIR = "/"
-MAXFD = 1024
-PIDFILE = "/var/run/li_metrics_agent.pid"
+WORK_DIR = "/"
+MAX_FD = 1024
+PID_FILE = "/var/run/li_metrics_agent.pid"
+
 
 def daemonize():
-    # The standard I/O file descriptors are redirected to /dev/null by default.
-    if (hasattr(os, "devnull")):
+    """Code copied from:
+    http://code.activestate.com/recipes/278731-creating-a-daemon-the-python-way/
+
+    Copyright (C) 2005 Chad J. Schroeder
+    Licensed under the PSF License
+    """
+    if hasattr(os, "devnull"):
         REDIRECT_TO = os.devnull
     else:
         REDIRECT_TO = "/dev/null"
 
     try:
-        # Fork a child process so the parent can exit.  This returns control to
-        # the command-line or shell.  It also guarantees that the child will not
-        # be a process group leader, since the child receives a new process ID
-        # and inherits the parent's process group ID.  This step is required
-        # to insure that the next call to os.setsid is successful.
         pid = os.fork()
     except OSError, e:
-        raise Exception, "%s [%d]" % (e.strerror, e.errno)
+        raise Exception("%s [%d]" % (e.strerror, e.errno))
 
-    if (pid == 0):	# The first child.
-        # To become the session leader of this new session and the process group
-        # leader of the new process group, we call os.setsid().  The process is
-        # also guaranteed not to have a controlling terminal.
+    if pid == 0:
         os.setsid()
-
-        # Is ignoring SIGHUP necessary?
-        #
-        # It's often suggested that the SIGHUP signal should be ignored before
-        # the second fork to avoid premature termination of the process.  The
-        # reason is that when the first child terminates, all processes, e.g.
-        # the second child, in the orphaned group will be sent a SIGHUP.
-        #
-        # "However, as part of the session management system, there are exactly
-        # two cases where SIGHUP is sent on the death of a process:
-        #
-        #   1) When the process that dies is the session leader of a session that
-        #      is attached to a terminal device, SIGHUP is sent to all processes
-        #      in the foreground process group of that terminal device.
-        #   2) When the death of a process causes a process group to become
-        #      orphaned, and one or more processes in the orphaned group are
-        #      stopped, then SIGHUP and SIGCONT are sent to all members of the
-        #      orphaned group." [2]
-        #
-        # The first case can be ignored since the child is guaranteed not to have
-        # a controlling terminal.  The second case isn't so easy to dismiss.
-        # The process group is orphaned when the first child terminates and
-        # POSIX.1 requires that every STOPPED process in an orphaned process
-        # group be sent a SIGHUP signal followed by a SIGCONT signal.  Since the
-        # second child is not STOPPED though, we can safely forego ignoring the
-        # SIGHUP signal.  In any case, there are no ill-effects if it is ignored.
-        #
-        # import signal           # Set handlers for asynchronous events.
-        # signal.signal(signal.SIGHUP, signal.SIG_IGN)
+        signal.signal(signal.SIGHUP, signal.SIG_IGN)
 
         try:
-            # Fork a second child and exit immediately to prevent zombies.  This
-            # causes the second child process to be orphaned, making the init
-            # process responsible for its cleanup.  And, since the first child is
-            # a session leader without a controlling terminal, it's possible for
-            # it to acquire one by opening a terminal in the future (System V-
-            # based systems).  This second fork guarantees that the child is no
-            # longer a session leader, preventing the daemon from ever acquiring
-            # a controlling terminal.
-            pid = os.fork()	# Fork a second child.
+            pid = os.fork()
         except OSError, e:
-            raise Exception, "%s [%d]" % (e.strerror, e.errno)
+            raise Exception("%s [%d]" % (e.strerror, e.errno))
 
-        if (pid == 0):	# The second child.
-            # Since the current working directory may be a mounted filesystem, we
-            # avoid the issue of not being able to unmount the filesystem at
-            # shutdown time by changing it to the root directory.
-            os.chdir(WORKDIR)
-            # We probably don't want the file mode creation mask inherited from
-            # the parent, so we give the child complete control over permissions.
+        if pid == 0:
+            os.chdir(WORK_DIR)
             os.umask(UMASK)
         else:
-            # exit() or _exit()?  See below.
-            os._exit(0)	# Exit parent (the first child) of the second child.
+            os._exit(0)
     else:
-        # exit() or _exit()?
-        # _exit is like exit(), but it doesn't call any functions registered
-        # with atexit (and on_exit) or any registered signal handlers.  It also
-        # closes any open file descriptors.  Using exit() may cause all stdio
-        # streams to be flushed twice and any temporary files may be unexpectedly
-        # removed.  It's therefore recommended that child branches of a fork()
-        # and the parent branch(es) of a daemon use _exit().
-        os._exit(0)	# Exit parent of the first child.
+        os._exit(0)
 
-    # Close all open file descriptors.  This prevents the child from keeping
-    # open any file descriptors inherited from the parent.  There is a variety
-    # of methods to accomplish this task.  Three are listed below.
-    #
-    # Try the system configuration variable, SC_OPEN_MAX, to obtain the maximum
-    # number of open file descriptors to close.  If it doesn't exists, use
-    # the default value (configurable).
-    #
-    # try:
-    #    maxfd = os.sysconf("SC_OPEN_MAX")
-    # except (AttributeError, ValueError):
-    #    maxfd = MAXFD
-    #
-    # OR
-    #
-    # if (os.sysconf_names.has_key("SC_OPEN_MAX")):
-    #    maxfd = os.sysconf("SC_OPEN_MAX")
-    # else:
-    #    maxfd = MAXFD
-    #
-    # OR
-    #
-    # Use the getrlimit method to retrieve the maximum file descriptor number
-    # that can be opened by this process.  If there is not limit on the
-    # resource, use the default value.
-    #
-    import resource		# Resource usage information.
     maxfd = resource.getrlimit(resource.RLIMIT_NOFILE)[1]
-    if (maxfd == resource.RLIM_INFINITY):
-        maxfd = MAXFD
-  
-    # Iterate through and close all file descriptors.
+    if maxfd == resource.RLIM_INFINITY:
+        maxfd = MAX_FD
+
     for fd in range(0, maxfd):
         try:
             os.close(fd)
-        except OSError:	# ERROR, fd wasn't open to begin with (ignored)
+        except OSError:
             pass
 
-    # Redirect the standard I/O file descriptors to the specified file.  Since
-    # the daemon has no controlling terminal, most daemons redirect stdin,
-    # stdout, and stderr to /dev/null.  This is done to prevent side-effects
-    # from reads and writes to the standard I/O file descriptors.
+    os.open(REDIRECT_TO, os.O_RDWR)
+    os.dup2(0, 1)
+    os.dup2(0, 2)
 
-    # This call to open is guaranteed to return the lowest file descriptor,
-    # which will be 0 (stdin), since it was closed above.
-    os.open(REDIRECT_TO, os.O_RDWR)	# standard input (0)
-
-    # Duplicate standard input to standard output and standard error.
-    os.dup2(0, 1)			# standard output (1)
-    os.dup2(0, 2)			# standard error (2)
-
-    return(0)
-
+    return 0
 
 
 def log_dump():
@@ -280,7 +218,7 @@ class ApiClient(object):
         data = {
             'name': self.agent_name,
             'version': PROTOCOL_VERSION,
-            'version_agent': AGENT_VERSION
+            'version_agent': __version__
         }
         logging.debug(json.dumps(data))
         return self._request('POST',
@@ -293,7 +231,7 @@ class ApiClient(object):
             metric = {
                 'name': self.agent_name,
                 'version': PROTOCOL_VERSION,
-                'version_agent': AGENT_VERSION,
+                'version_agent': __version__,
                 'label': x[0],
                 'min': x[1],
                 'max': x[2],
@@ -661,12 +599,6 @@ class AgentLoop(object):
     """
 
     def __init__(self):
-        try:
-            logging.config.fileConfig(CONFIG_FILE)
-        except ConfigParser.NoSectionError:
-            # We ignore any parsing error of logging configuration variables.
-            pass
-
         self.running = False
         self.state = AgentState.IDLE
         self.config = ConfigParser.ConfigParser()
@@ -757,7 +689,12 @@ class AgentLoop(object):
                     # stop sending collected data to server) or alter poll rate.
                     status, body = self.client.poll()
                     if 200 == status:
-                        j = json.loads(body)
+                        try:
+                            j = json.loads(body)
+                        except ValueError:
+                            logging.error("unable to parse body as JSON: \"%s\""
+                                          % repr(body))
+                            continue
 
                         try:
                             state = int(j['state'])
@@ -806,12 +743,49 @@ class AgentLoop(object):
 
 
 if __name__ == "__main__":
-    retcode = daemonize()
-    fp = open(PIDFILE, "w")
-    fp.write(str(os.getpid()))
-    close(fp)
-    print 'press Ctrl-C to stop me'
+    p = optparse.OptionParser(version=('%%prog %s' % __version__))
+    p.add_option('-D', '--no-daemon', action='store_false',
+                 dest='daemon', default=True,
+                 help=("When this option is specified, the agent will not "
+                       "detach and does not become a daemon."))
+    opts, args = p.parse_args()
+
+    if opts.daemon:
+        retcode = daemonize()
+
+    try:
+        logging.config.fileConfig(CONFIG_FILE)
+    except ConfigParser.NoSectionError, e:
+        # We ignore any parsing error of logging configuration variables.
+        pass
+    except Exception, e:
+        # Parsing of logging configuration failed, print something to a panic
+        # file in /var/log (Linux) or [Program] directory (Windows).
+        try:
+            with open(PANIC_LOG, 'r') as f:
+                f.write("failed parsing logging configuration: %s" % repr(e))
+        except IOError:
+            pass
+        sys.exit(1)
+
+    if opts.daemon:
+        logging.debug("load impact server metrics agent daemonization "
+                      "returned: %d" % retcode)
+
+    try:
+        with open(PID_FILE, 'w') as f:
+            f.write(str(os.getpid()))
+    except IOError, e:
+        logging.debug("unable to write pid file \"%s\": %s" % (PID_FILE,
+                                                               repr(e)))
+
+    if not opts.daemon:
+        print 'press Ctrl-C to stop me'
+
     loop = AgentLoop()
     loop.run()
-    print 'ok ok, bye bye!'
-    sys.exit(retcode)
+
+    if not opts.daemon:
+        print 'ok ok, bye bye!'
+    else:
+        sys.exit(retcode)

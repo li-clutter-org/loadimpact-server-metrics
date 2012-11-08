@@ -78,6 +78,12 @@ command = BUILTIN DISK used
 [loggers]
 keys=root
 
+#
+# default logging set to file and DEBUG output
+#
+# available log levels DEBUG, INFO, WARNING, ERROR, CRITICAL 
+# where DEBUG is the most verbose
+#
 [logger_root]
 handlers=file
 level=DEBUG

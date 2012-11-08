@@ -409,7 +409,7 @@ class Task(threading.Thread):
                     logging.debug('running %s ', self.cmd)
                     line = self._next_line()
                     # todo: improve this regexp
-                    rex = re.match(r'^.*\|(.*)=([0-9.]+)([a-zA-Z%/]+)', line)
+                    rex = re.match(r'^.*\|(.*)=([0-9.]+)([a-zA-Z%/]*)', line)
                     self.push_data(rex.group(1), rex.group(2), rex.group(3))
             except Exception:
                 log_dump()

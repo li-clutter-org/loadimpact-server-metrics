@@ -161,6 +161,18 @@ def log_dump():
             logging.error(a)
 
 
+def check_output(*popenargs, **kwargs):
+    """
+    Based on check_output in Python 2.7 subprocess module.
+    """
+    if 'stdout' in kwargs:
+        raise ValueError('stdout argument not allowed, it will be overridden.')
+    process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
+    output, unused_err = process.communicate()
+    retcode = process.poll()
+    return output, retcode
+
+
 class AgentState(object):
     """The agent can only be in these states. Either sending data or not."""
     IDLE = 1
@@ -368,8 +380,8 @@ class Task(threading.Thread):
         return 'task %s' % (self.cmd)
 
     def _next_line(self):
-        c = subprocess.Popen(self.cmd, shell=True, stdout=subprocess.PIPE)
-        return c.stdout.next()
+        output, returncode = check_output(self.cmd, shell=True)
+        return output
 
     def _prepare_data(self):
         count = len(self.buffer)
@@ -431,8 +443,9 @@ class Task(threading.Thread):
                     logging.debug('running %s ', self.cmd)
                     line = self._next_line()
                     # todo: improve this regexp
-                    rex = re.match(r'^.*\|(.*)=([0-9.]+)([a-zA-Z%/]+)', line)
-                    self.push_data(rex.group(1), rex.group(2), rex.group(3))
+                    rex = re.match(r'^.*\|(.*)=([0-9.]+)([a-zA-Z%/]*)', line)
+                    if rex:
+                        self.push_data(rex.group(1), rex.group(2), rex.group(3))
             except Exception:
                 log_dump()
             execution_time += self.sampling_interval
@@ -678,6 +691,11 @@ class AgentLoop(object):
                     if cmd.lower().startswith('builtin'):
                         cmd_args = [s for s in re.split(r'( |".*?"|\'.*?\')',
                                                         cmd) if s.strip()][1:]
+                        if not len(cmd_args):
+                            logging.warning("unknown built-in command: \"%s\""
+                                            % cmd)
+                            continue
+
                         cmd = cmd_args[0].lower()
                         args = (self.queue, self.client, ' '.join(cmd_args),
                                 self.sampling_interval,
@@ -692,7 +710,7 @@ class AgentLoop(object):
                             self.scheduler.add_task(DiskMetricTask(*args))
                         else:
                             logging.warning("unknown built-in command: \"%s\""
-                                            % args[0])
+                                            % cmd)
                     else:
                         self.scheduler.add_task(Task(self.queue, self.client,
                                                      cmd,

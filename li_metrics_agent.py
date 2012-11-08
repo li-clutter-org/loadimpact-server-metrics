@@ -31,7 +31,6 @@ import optparse
 import os
 import Queue
 import re
-import resource
 import signal
 import socket
 import subprocess
@@ -39,6 +38,9 @@ import sys
 import threading
 import time
 import traceback
+
+if sys.platform.startswith('linux'):
+    import resource
 
 from collections import defaultdict
 from urlparse import urlparse
@@ -171,8 +173,13 @@ class ApiClient(object):
 
     def _connect(self):
         if not self.conn:
-            port = self.parsed_api_url.port if self.parsed_api_url.port else 443
-            self.conn = httplib.HTTPSConnection(self.parsed_api_url.hostname,
+            if 'http' == self.parsed_api_url.scheme:
+                port = self.parsed_api_url.port if self.parsed_api_url.port else 80
+                self.conn = httplib.HTTPConnection(self.parsed_api_url.hostname,
+                                                port=port)
+            else:
+                port = self.parsed_api_url.port if self.parsed_api_url.port else 443
+                self.conn = httplib.HTTPSConnection(self.parsed_api_url.hostname,
                                                 port=port)
             if self.parsed_proxy_url:
                 headers = {}

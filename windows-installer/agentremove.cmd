@@ -1,0 +1,5 @@
+sc stop LoadImpactServerMetricsAgent
+li_metrics_agent_service.exe remove
+sc delete LoadImpactServerMetricsAgent
+
+

@@ -1,0 +1,5 @@
+sc stop LoadImpactServerMetricsAgent
+sc delete LoadImpactServerMetricsAgent
+cls
+li_metrics_agent_service.exe --startup auto install
+sc start LoadImpactServerMetricsAgent

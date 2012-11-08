@@ -57,7 +57,14 @@ __license__ = "Apache License v2.0"
 __version__ = "0.0.7"
 __email__ = "support@loadimpact.com"
 
-PROGRAM_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
+frozen = getattr(sys, 'frozen', '')
+if not frozen:
+    # regular python 
+    PROGRAM_DIR = os.path.dirname(os.path.realpath(__file__))
+else:
+    # running in py2exe
+    PROGRAM_DIR = os.path.dirname(os.path.realpath(sys.executable))
+
 CONFIG_FILE = os.path.join(PROGRAM_DIR, 'li_metrics_agent.conf')
 if sys.platform.startswith('linux'):
     PANIC_LOG = '/var/log/li_metrics_panic.log'
@@ -78,6 +85,21 @@ WORK_DIR = "/"
 MAX_FD = 1024
 PID_FILE = "/var/run/li_metrics_agent.pid"
 
+def InitLogging():
+    try:
+        logging.config.fileConfig(CONFIG_FILE)
+    except ConfigParser.NoSectionError, e:
+        # We ignore any parsing error of logging configuration variables.
+        pass
+    except Exception, e:
+        # Parsing of logging configuration failed, print something to a panic
+        # file in /var/log (Linux) or [Program] directory (Windows).
+        try:
+            with open(PANIC_LOG, 'r') as f:
+                f.write("failed parsing logging configuration: %s" % repr(e))
+        except IOError:
+            pass
+        sys.exit(1)
 
 def daemonize():
     """Code copied from:
@@ -457,12 +479,12 @@ class CPUMetricTask(BuiltinMetricTask):
 
 
 class MemoryMetricTask(BuiltinMetricTask):
-    """Built-in metric task to measure physical memory utilization %."""
+    """Built-in metric task to measure memory utilization %."""
 
     def _next_line_builtin(self, args):
-        phymem = psutil.phymem_usage()
-        return "Memory usage %s%% |Memusage=%s%%;" % (phymem.percent,
-                                                      phymem.percent)
+        virtualmem = psutil.virtual_memory()
+        return "Memory usage %s%% |Memusage=%s%%;" % (virtualmem.percent,
+                                                      virtualmem.percent)
 
 
 class RateBasedMetrics(BuiltinMetricTask):
@@ -761,20 +783,7 @@ if __name__ == "__main__":
     if opts.daemon:
         retcode = daemonize()
 
-    try:
-        logging.config.fileConfig(CONFIG_FILE)
-    except ConfigParser.NoSectionError, e:
-        # We ignore any parsing error of logging configuration variables.
-        pass
-    except Exception, e:
-        # Parsing of logging configuration failed, print something to a panic
-        # file in /var/log (Linux) or [Program] directory (Windows).
-        try:
-            with open(PANIC_LOG, 'r') as f:
-                f.write("failed parsing logging configuration: %s" % repr(e))
-        except IOError:
-            pass
-        sys.exit(1)
+    InitLogging();
 
     if opts.daemon:
         logging.debug("load impact server metrics agent daemonization "
@@ -797,3 +806,5 @@ if __name__ == "__main__":
         print 'ok ok, bye bye!'
     else:
         sys.exit(retcode)
+else:
+    InitLogging();

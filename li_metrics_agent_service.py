@@ -17,7 +17,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import agent
+import li_metrics_agent
 import threading
 import win32service
 import win32serviceutil
@@ -33,7 +33,7 @@ __email__ = "support@loadimpact.com"
 class AgentThread(threading.Thread):
     def __init__(self):
         super(AgentThread, self).__init__()
-        self.agent_loop = agent.AgentLoop()
+        self.agent_loop = li_metrics_agent.AgentLoop()
 
     def run(self):
         self.agent_loop.run()

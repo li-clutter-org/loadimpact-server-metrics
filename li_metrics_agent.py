@@ -139,6 +139,18 @@ def log_dump():
             logging.error(a)
 
 
+def check_output(*popenargs, **kwargs):
+    """
+    Based on check_output in Python 2.7 subprocess module.
+    """
+    if 'stdout' in kwargs:
+        raise ValueError('stdout argument not allowed, it will be overridden.')
+    process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
+    output, unused_err = process.communicate()
+    retcode = process.poll()
+    return output, retcode
+
+
 class AgentState(object):
     """The agent can only be in these states. Either sending data or not."""
     IDLE = 1
@@ -346,8 +358,8 @@ class Task(threading.Thread):
         return 'task %s' % (self.cmd)
 
     def _next_line(self):
-        c = subprocess.Popen(self.cmd, shell=True, stdout=subprocess.PIPE)
-        return c.stdout.next()
+        output, returncode = check_output(self.cmd, shell=True)
+        return output
 
     def _prepare_data(self):
         count = len(self.buffer)

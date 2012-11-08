@@ -410,7 +410,8 @@ class Task(threading.Thread):
                     line = self._next_line()
                     # todo: improve this regexp
                     rex = re.match(r'^.*\|(.*)=([0-9.]+)([a-zA-Z%/]*)', line)
-                    self.push_data(rex.group(1), rex.group(2), rex.group(3))
+                    if rex:
+                        self.push_data(rex.group(1), rex.group(2), rex.group(3))
             except Exception:
                 log_dump()
             execution_time += self.sampling_interval
@@ -656,6 +657,11 @@ class AgentLoop(object):
                     if cmd.lower().startswith('builtin'):
                         cmd_args = [s for s in re.split(r'( |".*?"|\'.*?\')',
                                                         cmd) if s.strip()][1:]
+                        if not len(cmd_args):
+                            logging.warning("unknown built-in command: \"%s\""
+                                            % cmd)
+                            continue
+
                         cmd = cmd_args[0].lower()
                         args = (self.queue, self.client, ' '.join(cmd_args),
                                 self.sampling_interval,
@@ -670,7 +676,7 @@ class AgentLoop(object):
                             self.scheduler.add_task(DiskMetricTask(*args))
                         else:
                             logging.warning("unknown built-in command: \"%s\""
-                                            % args[0])
+                                            % cmd)
                     else:
                         self.scheduler.add_task(Task(self.queue, self.client,
                                                      cmd,

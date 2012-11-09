@@ -245,9 +245,17 @@ class ApiClient(object):
                 headers['Authorization'] = self._build_auth(self.api_token)
             headers['User-Agent'] = AGENT_USER_AGENT_STRING
 
-            self.conn.request(method, self.parsed_api_url.path, data, headers)
-            resp = self.conn.getresponse()
-            ret = (resp.status, resp.read())
+            try:
+                self.conn.request(method, self.parsed_api_url.path, data,
+                                  headers)
+                resp = self.conn.getresponse()
+                ret = (resp.status, resp.read())
+            except httplib.HTTPException:
+                self._close()
+                raise
+            except socket.error:
+                self._close()
+                raise
 
             # Close connection if in IDLE mode otherwise leave open.
             if AgentState.IDLE == self.state:

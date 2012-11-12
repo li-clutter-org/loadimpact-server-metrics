@@ -21,7 +21,8 @@ from __future__ import division
 
 import base64
 import ConfigParser
-import httplib
+# set_tunnel() is not supported in Python26
+import httplib27 as httplib
 import json
 import logging
 import logging.config
@@ -32,14 +33,15 @@ import os
 import Queue
 import re
 import signal
-import socket
+import socket27 as socket
 import subprocess
 import sys
 import threading
 import time
 import traceback
 
-if sys.platform.startswith('linux'):
+running_on_linux = sys.platform.startswith('linux')
+if running_on_linux:
     import resource
 
 from collections import defaultdict
@@ -59,7 +61,7 @@ __email__ = "support@loadimpact.com"
 
 frozen = getattr(sys, 'frozen', '')
 if not frozen:
-    # regular python 
+    # regular python
     PROGRAM_DIR = os.path.dirname(os.path.realpath(__file__))
 else:
     # running in py2exe
@@ -207,6 +209,8 @@ class ApiClient(object):
 
     def _connect(self):
         if not self.conn:
+
+
             if 'http' == self.parsed_api_url.scheme:
                 port = self.parsed_api_url.port if self.parsed_api_url.port else 80
                 self.conn = httplib.HTTPConnection(self.parsed_api_url.hostname,
@@ -803,32 +807,39 @@ if __name__ == "__main__":
     p.add_option('-D', '--no-daemon', action='store_false',
                  dest='daemon', default=True,
                  help=("When this option is specified, the agent will not "
-                       "detach and does not become a daemon."))
+                       "detach and does not become a daemon. On windows this option is always enabled."))
+    p.add_option('-P', '--poll-on-start', action='store_true',
+                 dest='poll', default=False,
+                 help=("Poll server on startup to verify connection."))
     opts, args = p.parse_args()
 
-    if opts.daemon:
+    run_as_daemon = opts.daemon if running_on_linux else False
+    if run_as_daemon:
         retcode = daemonize()
 
     InitLogging();
 
-    if opts.daemon:
+    if run_as_daemon:
         logging.debug("load impact server metrics agent daemonization "
                       "returned: %d" % retcode)
 
-    try:
-        with open(PID_FILE, 'w') as f:
-            f.write(str(os.getpid()))
-    except IOError, e:
-        logging.debug("unable to write pid file \"%s\": %s" % (PID_FILE,
-                                                               repr(e)))
+    if running_on_linux:
+        try:
+            with open(PID_FILE, 'w') as f:
+                f.write(str(os.getpid()))
+        except IOError, e:
+            logging.debug("unable to write pid file \"%s\": %s" % (PID_FILE,
+                                                                   repr(e)))
 
-    if not opts.daemon:
+    if not run_as_daemon:
         print 'press Ctrl-C to stop me'
 
     loop = AgentLoop()
+    if opts.poll:
+        loop.client.poll()
     loop.run()
 
-    if not opts.daemon:
+    if not run_as_daemon:
         print 'ok ok, bye bye!'
     else:
         sys.exit(retcode)

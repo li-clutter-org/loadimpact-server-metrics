@@ -1,3 +1,5 @@
+# Load Impact Server Metrics sample configuration file
+
 [General]
 # agent_name - hostname or any other identifier for this server, choose wisely
 agent_name = myagent
@@ -8,18 +10,21 @@ server_metrics_api_token = SERVER_METRICS_API_TOKEN
 # server_metrics_api_url - don't change this unless you have a good reason
 server_metrics_api_url = https://api.loadimpact.com/v2/server-metrics
 
+
 # Built-in CPU usage in percent
 [test1]
 command = builtin cpu
+
 
 # Built-in memory usage in percent
 [test2]
 command = builtin memory
 
+
 # Built-in network performance
 #
 # Usage:
-#     builtin network [interface] [metric]
+#     command = builtin network [interface] [metric]
 #
 #     optional: network interface, for Windows, this is the name given to
 #               the interface, i.e. 'Local Area Connection' (use quotes when 
@@ -36,18 +41,20 @@ command = builtin memory
 #               - pps-out (sent packets/s)
 #
 # Examples:
-#     builtin network
-#     builtin network bps
-#     builtin network pps
-#     builtin network eth0 bps
-#     builtin network 'Local Data Connection' pps
+#     command = builtin network
+#     command = builtin network bps
+#     command = builtin network pps
+#     command = builtin network eth0 bps
+#     command = builtin network 'Local Data Connection' pps
+
 [test3]
 command = builtin network
+
 
 # Built-in disk performance
 #
 # Usage:
-#     builtin disk [metric] [path]
+#     command = builtin disk [metric] [path]
 #
 #     optional: metric name (defaults to bps), one of:
 #               - iops (IO/s total)
@@ -61,20 +68,88 @@ command = builtin network
 #     optional: path, optional path for "used" metric, defaults to "/".
 #
 # Examples:
-#     builtin disk
-#     builtin disk iops
-#     builtin disk bps
-#     builtin disk used
-#     builtin disk used '/'
-#     builtin disk used '/var/log'
-[test4]
-command = BUILTIN DISK used
+#     command = builtin disk
+#     command = builtin disk iops
+#     command = builtin disk bps
+#     command = builtin disk used
+#     command = builtin disk used '/'
+#     command = builtin disk used '/var/log'
 
-# An external script, needs to output data like a Nagios plugin
+[test4]
+command = builtin disk used
+
+
+# An external script
+# 
+# The script needs to output data in the Nagios performance data format, see:
+# http://nagiosplug.sourceforge.net/developer-guidelines.html#AEN201
+#
+# By default all performance data will be parsed and sent to the Load Impact
+# servers. If you're only interested in certain performance metric you can
+# specify which ones using the "performance_data" option.
+#
+# The "performance_data" option can also be used to set a unit for a performance
+# metric if a script for some reason doesn't specify one.
+#
+# Usage:
+#     command = /path/to/script -f --name1=value1 arg1
+#
+#     optional:
+#               performance_data = metric_name:unit
+#               performance_data = "metric name":unit
+#               performance_data = metric_name1:unit1 metric_name2:unit2 ... metric_nameN:unitN
+#
+# Examples:
+#     command = /path/to/my-nagios-plugins/check_http -H loadimpact.com -p 80
+#     performance_data = time:s size:b
+
 #[test5]
 #command = /path/to/myscript.py
 
-# logging to the file servermetrics.log by default
+#[test6]
+#command = /path/to/check_http -H loadimpact.com -p 80
+#performance_data = time:s "size":b
+
+
+# Logging
+#
+# Logging with level DEBUG to the file li_metrics_agent.log by default. The
+# locations of the default log file is dependent on platform and mode of
+# execution (daemon or not).
+#
+# To see all logging options available please refer to the Python documentation:
+# http://docs.python.org/2/library/logging.config.html#configuration-file-format
+#
+# Examples:
+#     Logging to syslog on Linux (assuming same formatters as below for file):
+#         [logger_root]
+#         handlers = syslog
+#         level = DEBUG
+#
+#         [handlers]
+#         keys = syslog
+#
+#         [handler_syslog]
+#         class = handlers.SysLogHandler
+#         formatter = simple
+#         level=DEBUG
+#         args=('/dev/log', handlers.SysLogHandler.LOG_SYSLOG)
+#
+#    Logging to event log on Windows (assumes you have Mark Hammond's Win32
+#    extensions for Python installed):
+#         [logger_root]
+#         handlers = eventlog
+#         level = DEBUG
+#
+#         [handlers]
+#         keys = eventlog
+#
+#         [handler_eventlog]
+#         class = handlers.NTEventLogHandler
+#         formatter = simple
+#         level=DEBUG
+#         args=('li-metrics-agent',)
+
 [loggers]
 keys=root
 
@@ -106,26 +181,6 @@ interval=midnight
 backupCount=5
 formatter=simple
 level=DEBUG
-#
-# use a full path to the log file, make sure the account running the service
-# have read/write permissions 
-#
-args=('server_metrics_agent.log',)
-
-
-#
-# Logging to syslog (assuming same formatters as above)
-#
-
-#[logger_root]
-#handlers=syslog
-#level=DEBUG
-
-#[handlers]
-#keys=syslog
-
-#[handler_syslog]
-#class=handlers.SysLogHandler
-#formatter=simple
-#level=DEBUG
-#args=('/dev/log', handlers.SysLogHandler.LOG_SYSLOG)
+args=('li_metrics_agent.log',) # Use a full path to the log file, make sure the
+                               # account running the service have necessary
+                               # read/write permissions.

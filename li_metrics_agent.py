@@ -50,7 +50,7 @@ from urlparse import urlparse
 try:
     import psutil
 except ImportError:
-    print "Can't find module psutil"
+    print "can't find module psutil"
     sys.exit(1)
 
 __author__ = "Load Impact"
@@ -76,6 +76,23 @@ PROTOCOL_VERSION = "1"
 AGENT_USER_AGENT_STRING = ("LoadImpactServerMetricsAgent/%s "
                            "(Load Impact; http://loadimpact.com);"
                            % __version__)
+CONFIG_CMD_ARGS_REGEX = re.compile(r'( |"[^"]*?"|\'[^\']*?\')')
+PERF_DATA_OPTS_REGEX = re.compile(r'''
+    (?:[\'"]?)([^:\'"]+)(?:[\'"]?)  # Label
+    (?::([a-zA-Z%/]+))?             # Unit
+    (?:[, ]*)                       # Multi-value separator
+    ''', re.X)
+NAGIOS_PERF_DATA_REGEX = re.compile(r'''
+    (?:[\'"]?)([^=\'"]+)(?:[\'"]?)  # Label
+    =
+    ([\d\.]+)                       # Value
+    ([a-zA-Z%/]+)?                  # Unit
+    (?:;([\d\.]+)?)?                # Warning level
+    (?:;([\d\.]+)?)?                # Critical level
+    (?:;([\d\.]+)?)?                # Min
+    (?:;([\d\.]+)?)?                # Max
+    (?:[, ]*)                       # Multi-value separator
+    ''', re.X)
 
 DEFAULT_SERVER_METRICS_API_URL = 'http://api.loadimpact.com/v2/server-metrics'
 DEFAULT_POLL_RATE = 30
@@ -87,7 +104,8 @@ WORK_DIR = "/"
 MAX_FD = 1024
 PID_FILE = "/var/run/li_metrics_agent.pid"
 
-def InitLogging():
+
+def init_logging():
     try:
         logging.config.fileConfig(CONFIG_FILE)
     except ConfigParser.NoSectionError, e:
@@ -102,6 +120,7 @@ def InitLogging():
         except IOError:
             pass
         sys.exit(1)
+
 
 def daemonize():
     """Code copied from:
@@ -164,9 +183,7 @@ def log_dump():
 
 
 def check_output(*popenargs, **kwargs):
-    """
-    Based on check_output in Python 2.7 subprocess module.
-    """
+    """Based on check_output in Python 2.7 subprocess module."""
     if 'stdout' in kwargs:
         raise ValueError('stdout argument not allowed, it will be overridden.')
     process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
@@ -187,6 +204,26 @@ class AgentState(object):
     @staticmethod
     def is_valid(state):
         return True if state in [AgentState.IDLE, AgentState.ACTIVE] else False
+
+
+class NagiosPluginExitCode(object):
+    """Enum mapping process exit codes to Nagios service states."""
+    OK = 0
+    WARNING = 1
+    CRITICAL = 2
+    UNKNOWN = 3
+
+    @staticmethod
+    def get_name(exit_code):
+        if exit_code == NagiosPluginExitCode.OK:
+            return 'OK'
+        if exit_code == NagiosPluginExitCode.WARNING:
+            return 'WARNING'
+        elif exit_code == NagiosPluginExitCode.CRITICAL:
+            return 'CRITICAL'
+        elif exit_code == NagiosPluginExitCode.UNKNOWN:
+            return 'UNKNOWN'
+        return 'INVALID'
 
 
 class ApiClient(object):
@@ -212,11 +249,13 @@ class ApiClient(object):
 
 
             if 'http' == self.parsed_api_url.scheme:
-                port = self.parsed_api_url.port if self.parsed_api_url.port else 80
+                port = (self.parsed_api_url.port if self.parsed_api_url.port
+                        else 80)
                 self.conn = httplib.HTTPConnection(self.parsed_api_url.hostname,
                                                 port=port)
             else:
-                port = self.parsed_api_url.port if self.parsed_api_url.port else 443
+                port = (self.parsed_api_url.port if self.parsed_api_url.port
+                        else 443)
                 self.conn = httplib.HTTPSConnection(self.parsed_api_url.hostname,
                                                 port=port)
             if self.parsed_proxy_url:
@@ -292,7 +331,11 @@ class ApiClient(object):
                 'stddev': x[4],
                 'median': x[5],
                 'count': x[6],
-                'unit': x[7]
+                'unit': x[7],
+                'warning_level': x[8],
+                'critical_level': x[9],
+                'min_possible': x[10],
+                'max_possible': x[11]
             }
             data.append(metric)
 
@@ -373,17 +416,18 @@ class Task(threading.Thread):
     plugin that is executed as a sub-process.
     """
 
-    def __init__(self, queue, client, cmd, sampling_interval,
+    def __init__(self, queue, client, cmd, perf_data_opts, sampling_interval,
                  data_push_interval):
         threading.Thread.__init__(self)
         self.queue = queue
         self.client = client
         self.cmd = cmd
+        self.perf_data_opts = perf_data_opts
         self.sampling_interval = sampling_interval
         self.data_push_interval = data_push_interval
         self.running = True
         self.state = AgentState.IDLE
-        self.buffer = []
+        self.buffer = defaultdict(list)
         self.prev_sent = 0
         self.prev_recv = 0
         self.last_push = time.time()
@@ -393,16 +437,24 @@ class Task(threading.Thread):
 
     def _next_line(self):
         output, returncode = check_output(self.cmd, shell=True)
+        if returncode in [NagiosPluginExitCode.WARNING,
+                          NagiosPluginExitCode.CRITICAL,
+                          NagiosPluginExitCode.UNKNOWN]:
+            logging.warning("plugin \"%s\" exited with code other than OK: %d "
+                            "(%s)" % (self.cmd, returncode,
+                                      NagiosPluginExitCode.get_name(returncode)))
         return output
 
-    def _prepare_data(self):
-        count = len(self.buffer)
+    def _prepare_data(self, label):
+        count = len(self.buffer[label])
+        if count == 0:
+            return (0, 0, 0, 0, 0, 0)
 
         # avg
         vmin = sys.float_info.max
         vmax = 0.0
         total = 0.0
-        for v in self.buffer:
+        for v in self.buffer[label]:
             vmin = min(vmin, v)
             vmax = max(vmax, v)
             total = total + v
@@ -411,7 +463,7 @@ class Task(threading.Thread):
 
         # std dev
         total = 0.0
-        for v in self.buffer:
+        for v in self.buffer[label]:
             total += ((v - avg) ** 2)
 
         stddev = 0.0
@@ -419,7 +471,7 @@ class Task(threading.Thread):
             stddev = math.sqrt((1.0 / (count - 1)) * total)
 
         # median
-        values = sorted(self.buffer)
+        values = sorted(self.buffer[label])
         if count % 2 == 1:
             median = values[int((count + 1) / 2 - 1)]
         else:
@@ -429,22 +481,26 @@ class Task(threading.Thread):
 
         return (vmin, vmax, avg, stddev, median, count)
 
-    def push_data(self, label, value, unit):
-        self.buffer.append(float(value))
+    def push_data(self, perf_data):
+        for label, data in perf_data.iteritems():
+            self.buffer[label].append(float(data[1]))
         if (self.last_push + self.data_push_interval) < time.time():
             try:
-                data = self._prepare_data()
-                data = (label,) + data + (unit,)
+                for label, data in perf_data.iteritems():
+                    label, value, unit, warning_level, critical_level, min_, max_ = data
+                    aggregated_data = self._prepare_data(label)
+                    data = (label,) + aggregated_data + (unit, warning_level,
+                                                         critical_level, min_, max_)
 
-                try:
-                    self.queue.put_nowait(data)
-                except Queue.Full:
-                    pass  # Ignore data
+                    try:
+                        self.queue.put_nowait(data)
+                    except Queue.Full:
+                        pass  # Ignore data
 
-                self.last_push = time.time()
-                self.buffer = []
+                    self.buffer[label] = []
             except Exception:
                 log_dump()
+            self.last_push = time.time()
 
     def run(self):
         execution_time = time.time()
@@ -454,14 +510,34 @@ class Task(threading.Thread):
                 if AgentState.ACTIVE == self.state:
                     logging.debug('running %s ', self.cmd)
                     line = self._next_line()
-                    # todo: improve this regexp
-                    rex = re.match(r'^.*\|(.*)=([0-9.]+)([a-zA-Z%/]*)', line)
-                    if rex:
-                        self.push_data(rex.group(1), rex.group(2), rex.group(3))
+                    try:
+                        human_str, perf_data_str = line.split('|')
+                    except ValueError:
+                        perf_data_str = ''
+                    perf_data_str = perf_data_str.strip()
+                    perf_data = {}
+                    for match in NAGIOS_PERF_DATA_REGEX.finditer(perf_data_str):
+                        perf_data[match.group(1).strip()] = (match.group(1),
+                                                             match.group(2),
+                                                             match.group(3),
+                                                             match.group(4),
+                                                             match.group(5),
+                                                             match.group(6),
+                                                             match.group(7))
+                    if len(perf_data):
+                        if self.perf_data_opts and len(self.perf_data_opts) > 0:
+                            for label in perf_data.keys():
+                                if label in self.perf_data_opts:
+                                    unit = self.perf_data_opts[label]
+                                    if unit and not perf_data[label][2]:
+                                        perf_data[label][2] = unit
+                                else:
+                                    del perf_data[label]
+                        self.push_data(perf_data)
             except Exception:
                 log_dump()
             execution_time += self.sampling_interval
-            time.sleep(max(0, execution_time - start))
+            time.sleep(max(0.5, execution_time - start))
 
     def set_state(self, state):
         self.state = state
@@ -507,9 +583,12 @@ class MemoryMetricTask(BuiltinMetricTask):
     """Built-in metric task to measure memory utilization %."""
 
     def _next_line_builtin(self, args):
-        virtualmem = psutil.virtual_memory()
-        return "Memory usage %s%% |Memusage=%s%%;" % (virtualmem.percent,
-                                                      virtualmem.percent)
+        if hasattr(psutil, 'virtual_memory'):
+            mem = psutil.virtual_memory()
+        else:
+            mem = psutil.phymem_usage()  # Deprecated in psutil 0.3.0 and 0.6.0
+        return "Memory usage %s%% |Memusage=%s%%;" % (mem.percent,
+                                                      mem.percent)
 
 
 class RateBasedMetrics(BuiltinMetricTask):
@@ -556,7 +635,7 @@ class NetworkMetricTask(RateBasedMetrics):
                               "\"%s\"" % interface)
                 return None
             # Format for label name in the report line below
-            interface = " " + interface
+            interface = "_" + interface
         else:
             counters = psutil.network_io_counters(pernic=False)
 
@@ -701,8 +780,8 @@ class AgentLoop(object):
                 if self.config.has_option(section, 'command'):
                     cmd = self.config.get(section, 'command')
                     if cmd.lower().startswith('builtin'):
-                        cmd_args = [s for s in re.split(r'( |".*?"|\'.*?\')',
-                                                        cmd) if s.strip()][1:]
+                        cmd_args = [s for s in CONFIG_CMD_ARGS_REGEX.split(cmd)
+                                    if s.strip()][1:]
                         if not len(cmd_args):
                             logging.warning("unknown built-in command: \"%s\""
                                             % cmd)
@@ -710,7 +789,7 @@ class AgentLoop(object):
 
                         cmd = cmd_args[0].lower()
                         args = (self.queue, self.client, ' '.join(cmd_args),
-                                self.sampling_interval,
+                                None, self.sampling_interval,
                                 self.data_push_interval)
                         if 'cpu' == cmd:
                             self.scheduler.add_task(CPUMetricTask(*args))
@@ -724,8 +803,13 @@ class AgentLoop(object):
                             logging.warning("unknown built-in command: \"%s\""
                                             % cmd)
                     else:
+                        perf_data_opts = {}
+                        if self.config.has_option(section, 'performance_data'):
+                            perf_data = self.config.get(section, 'performance_data')
+                            for match in PERF_DATA_OPTS_REGEX.finditer(perf_data):
+                                perf_data_opts[match.group(1)] = match.group(2)
                         self.scheduler.add_task(Task(self.queue, self.client,
-                                                     cmd,
+                                                     cmd, perf_data_opts,
                                                      self.sampling_interval,
                                                      self.data_push_interval))
         except Exception:
@@ -817,7 +901,7 @@ if __name__ == "__main__":
     if run_as_daemon:
         retcode = daemonize()
 
-    InitLogging();
+    init_logging()
 
     if run_as_daemon:
         logging.debug("load impact server metrics agent daemonization "
@@ -844,4 +928,4 @@ if __name__ == "__main__":
     else:
         sys.exit(retcode)
 else:
-    InitLogging();
+    init_logging()

@@ -4,7 +4,7 @@ import py2exe
 class Target:
     def __init__(self, **kw):
         self.__dict__.update(kw)
-        self.version = "0.0.7"
+        self.version = "1.0"
         self.company_name = "Load Impact AB"
         self.copyright = "Load Impact AB"
         self.name = "LoadImpactServerMetricsAgent"
@@ -15,8 +15,10 @@ myservice = Target(
     cmdline_style='pywin32'
 )
 
+dllexcludes = [ 'iphlpapi.dll' ]
+
 setup(
-    options = {"py2exe": {"compressed": 1, "bundle_files": 3} },   
+    options = {"py2exe": {"compressed": 1, "dll_excludes": dllexcludes, "bundle_files": 3} },   
     console=['li_metrics_agent_service.py'],
     zipfile = None,
     service=[myservice]

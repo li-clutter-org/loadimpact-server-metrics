@@ -246,28 +246,33 @@ class ApiClient(object):
 
     def _connect(self):
         if not self.conn:
-
-
-            if 'http' == self.parsed_api_url.scheme:
-                port = (self.parsed_api_url.port if self.parsed_api_url.port
-                        else 80)
-                self.conn = httplib.HTTPConnection(self.parsed_api_url.hostname,
-                                                port=port)
+            scheme = (self.parsed_proxy_url.scheme if self.parsed_proxy_url
+                      else self.parsed_api_url.scheme)
+            host = (self.parsed_proxy_url.hostname if self.parsed_proxy_url
+                    else self.parsed_api_url.hostname)
+            port = (self.parsed_proxy_url.port if self.parsed_proxy_url
+                    else self.parsed_api_url.port)
+            if 'http' == scheme:
+                port = port if port else 80
+                self.conn = httplib.HTTPConnection(host, port=port)
             else:
-                port = (self.parsed_api_url.port if self.parsed_api_url.port
-                        else 443)
-                self.conn = httplib.HTTPSConnection(self.parsed_api_url.hostname,
-                                                port=port)
+                port = port if port else 443
+                self.conn = httplib.HTTPSConnection(host, port=port)
             if self.parsed_proxy_url:
+                host = self.parsed_api_url.hostname
+                if 'http' == self.parsed_api_url.scheme:
+                    port = (self.parsed_api_url.port if self.parsed_api_url.port
+                            else 80)
+                else:
+                    port = (self.parsed_api_url.port if self.parsed_api_url.port
+                            else 443)
                 headers = {}
                 if self.parsed_proxy_url.username:
                     username = self.parsed_proxy_url.username
                     password = self.parsed_proxy_url.password
                     headers['Proxy-Authentication'] = self._build_auth(username,
                                                                        password)
-                self.conn.set_tunnel(self.parsed_proxy_url.hostname,
-                                     port=self.parsed_proxy_url.port,
-                                     headers=headers)
+                self.conn.set_tunnel(host, port=port, headers=headers)
 
     def _close(self):
         if self.conn:
@@ -436,13 +441,13 @@ class Task(threading.Thread):
         return 'task %s' % (self.cmd)
 
     def _next_line(self):
-        output, returncode = check_output(self.cmd, shell=True)
-        if returncode in [NagiosPluginExitCode.WARNING,
-                          NagiosPluginExitCode.CRITICAL,
-                          NagiosPluginExitCode.UNKNOWN]:
+        output, retcode = check_output(self.cmd, shell=True)
+        if retcode in [NagiosPluginExitCode.WARNING,
+                       NagiosPluginExitCode.CRITICAL,
+                       NagiosPluginExitCode.UNKNOWN]:
             logging.warning("plugin \"%s\" exited with code other than OK: %d "
-                            "(%s)" % (self.cmd, returncode,
-                                      NagiosPluginExitCode.get_name(returncode)))
+                            "(%s)" % (self.cmd, retcode,
+                                      NagiosPluginExitCode.get_name(retcode)))
         return output
 
     def _prepare_data(self, label):
@@ -782,7 +787,9 @@ class AgentLoop(object):
                     if cmd.lower().startswith('builtin'):
                         cmd_args = [s for s in CONFIG_CMD_ARGS_REGEX.split(cmd)
                                     if s.strip()][1:]
-                        if not len(cmd_args):
+                        if (not len(cmd_args) or
+                            cmd_args[0].lower() not in ['cpu', 'memory',
+                                                        'network', 'disk']):
                             logging.warning("unknown built-in command: \"%s\""
                                             % cmd)
                             continue
@@ -805,8 +812,8 @@ class AgentLoop(object):
                     else:
                         perf_data_opts = {}
                         if self.config.has_option(section, 'performance_data'):
-                            perf_data = self.config.get(section, 'performance_data')
-                            for match in PERF_DATA_OPTS_REGEX.finditer(perf_data):
+                            opts = self.config.get(section, 'performance_data')
+                            for match in PERF_DATA_OPTS_REGEX.finditer(opts):
                                 perf_data_opts[match.group(1)] = match.group(2)
                         self.scheduler.add_task(Task(self.queue, self.client,
                                                      cmd, perf_data_opts,
@@ -891,7 +898,8 @@ if __name__ == "__main__":
     p.add_option('-D', '--no-daemon', action='store_false',
                  dest='daemon', default=True,
                  help=("When this option is specified, the agent will not "
-                       "detach and does not become a daemon. On windows this option is always enabled."))
+                       "detach and does not become a daemon. On windows this "
+                       "option is always enabled."))
     p.add_option('-P', '--poll-on-start', action='store_true',
                  dest='poll', default=False,
                  help=("Poll server on startup to verify connection."))

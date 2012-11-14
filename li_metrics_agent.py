@@ -45,6 +45,7 @@ if running_on_linux:
     import resource
 
 from collections import defaultdict
+from datetime import datetime
 from urlparse import urlparse
 
 try:
@@ -56,7 +57,7 @@ except ImportError:
 __author__ = "Load Impact"
 __copyright__ = "Copyright 2012, Load Impact"
 __license__ = "Apache License v2.0"
-__version__ = "0.0.7"
+__version__ = "1.0"
 __email__ = "support@loadimpact.com"
 
 frozen = getattr(sys, 'frozen', '')
@@ -68,19 +69,20 @@ else:
     PROGRAM_DIR = os.path.dirname(os.path.realpath(sys.executable))
 
 CONFIG_FILE = os.path.join(PROGRAM_DIR, 'li_metrics_agent.conf')
+PANIC_LOG_FILENAME = 'li_metrics_panic.log'
 if sys.platform.startswith('linux'):
-    PANIC_LOG = '/var/log/li_metrics_panic.log'
+    PANIC_LOG_PATH = '/var/log/%s' % (PANIC_LOG_FILENAME)
 else:
-    PANIC_LOG = os.path.join(PROGRAM_DIR, 'li_metrics_panic.log')
+    PANIC_LOG_PATH = os.path.join(PROGRAM_DIR, PANIC_LOG_FILENAME)
 PROTOCOL_VERSION = "1"
 AGENT_USER_AGENT_STRING = ("LoadImpactServerMetricsAgent/%s "
                            "(Load Impact; http://loadimpact.com);"
                            % __version__)
 CONFIG_CMD_ARGS_REGEX = re.compile(r'( |"[^"]*?"|\'[^\']*?\')')
 PERF_DATA_OPTS_REGEX = re.compile(r'''
-    (?:[\'"]?)([^:\'"]+)(?:[\'"]?)  # Label
-    (?::([a-zA-Z%/]+))?             # Unit
-    (?:[, ]*)                       # Multi-value separator
+    (?:([^:\'" ]+)|(?:(?:[\'"]?)([^:\'"]+)(?:[\'"]?)))  # Label
+    (?::([a-zA-Z%/]+))?                                 # Unit
+    (?:[ ]*)                                            # Multi-value separator
     ''', re.X)
 NAGIOS_PERF_DATA_REGEX = re.compile(r'''
     (?:[\'"]?)([^=\'"]+)(?:[\'"]?)  # Label
@@ -105,6 +107,11 @@ MAX_FD = 1024
 PID_FILE = "/var/run/li_metrics_agent.pid"
 
 
+def panic_log(path, msg):
+    with open(path, 'a') as f:
+        f.write("%s - %s\n" % (datetime.now().isoformat(' '), msg))
+
+
 def init_logging():
     try:
         logging.config.fileConfig(CONFIG_FILE)
@@ -115,10 +122,14 @@ def init_logging():
         # Parsing of logging configuration failed, print something to a panic
         # file in /var/log (Linux) or [Program] directory (Windows).
         try:
-            with open(PANIC_LOG, 'r') as f:
-                f.write("failed parsing logging configuration: %s" % repr(e))
+            panic_log(PANIC_LOG_PATH,
+                      "failed parsing logging configuration: %s" % repr(e))
         except IOError:
-            pass
+            try:
+                panic_log(PANIC_LOG_FILENAME,
+                          "failed parsing logging configuration: %s" % repr(e))
+            except IOError:
+                print "failed parsing logging configuration: %s" % repr(e)
         sys.exit(1)
 
 
@@ -339,8 +350,8 @@ class ApiClient(object):
                 'unit': x[7],
                 'warning_level': x[8],
                 'critical_level': x[9],
-                'min_possible': x[10],
-                'max_possible': x[11]
+                'lower_limit': x[10],
+                'upper_limit': x[11]
             }
             data.append(metric)
 
@@ -814,7 +825,9 @@ class AgentLoop(object):
                         if self.config.has_option(section, 'performance_data'):
                             opts = self.config.get(section, 'performance_data')
                             for match in PERF_DATA_OPTS_REGEX.finditer(opts):
-                                perf_data_opts[match.group(1)] = match.group(2)
+                                metric = (match.group(1) if match.group(1)
+                                          else match.group(2))
+                                perf_data_opts[metric] = match.group(3)
                         self.scheduler.add_task(Task(self.queue, self.client,
                                                      cmd, perf_data_opts,
                                                      self.sampling_interval,

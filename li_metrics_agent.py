@@ -55,7 +55,7 @@ except ImportError:
     sys.exit(1)
 
 __author__ = "Load Impact"
-__copyright__ = "Copyright 2012, Load Impact"
+__copyright__ = "Copyright (c) 2012, Load Impact"
 __license__ = "Apache License v2.0"
 __version__ = "1.0"
 __email__ = "support@loadimpact.com"
@@ -243,9 +243,9 @@ class ApiClient(object):
     state it will not.
     """
 
-    def __init__(self, agent_name, api_token, api_url, proxy_url=None):
+    def __init__(self, agent_name, token, api_url, proxy_url=None):
         self.agent_name = agent_name
-        self.api_token = api_token
+        self.token = token
         self.parsed_api_url = urlparse(api_url)
         self.parsed_proxy_url = urlparse(proxy_url) if proxy_url else None
         self.state = AgentState.IDLE
@@ -301,7 +301,7 @@ class ApiClient(object):
 
             headers = {} if not isinstance(headers, dict) else headers
             if 'Authorization' not in headers:
-                headers['Authorization'] = self._build_auth(self.api_token)
+                headers['Authorization'] = self._build_auth(self.token)
             headers['User-Agent'] = AGENT_USER_AGENT_STRING
 
             try:
@@ -755,10 +755,10 @@ class AgentLoop(object):
         self.config.read(CONFIG_FILE)
         try:
             agent_name = self.config.get('General', 'agent_name')
-            api_token = self.config.get('General', 'server_metrics_api_token')
+            token = self.config.get('General', 'server_metrics_token')
         except ConfigParser.NoSectionError:
-            logging.error("agent name (agent_name) and API token "
-                          "(server_metrics_api_token) are mandatory "
+            logging.error("server metrics agent name (agent_name) and "
+                          "token (server_metrics_token) are mandatory "
                           "configuration variables under the \"General\" "
                           "section")
             sys.exit(1)
@@ -782,7 +782,7 @@ class AgentLoop(object):
             if self.config.has_option('General', 'data_push_interval')
             else DEFAULT_DATA_PUSH_INTERVAL)
 
-        self.client = ApiClient(agent_name, api_token, api_url, proxy_url)
+        self.client = ApiClient(agent_name, token, api_url, proxy_url)
         self.scheduler = Scheduler()
         self.queue = Queue.Queue(maxsize=100)
 
@@ -910,9 +910,9 @@ if __name__ == "__main__":
     p = optparse.OptionParser(version=('%%prog %s' % __version__))
     p.add_option('-D', '--no-daemon', action='store_false',
                  dest='daemon', default=True,
-                 help=("When this option is specified, the agent will not "
-                       "detach and does not become a daemon. On windows this "
-                       "option is always enabled."))
+                 help=("When this option is specified, the server metrics "
+                       "agent will not detach and does not become a daemon. "
+                       "On windows this option is always enabled."))
     p.add_option('-P', '--poll-on-start', action='store_true',
                  dest='poll', default=False,
                  help=("Poll server on startup to verify connection."))
@@ -925,8 +925,8 @@ if __name__ == "__main__":
     init_logging()
 
     if run_as_daemon:
-        logging.debug("load impact server metrics agent daemonization "
-                      "returned: %d" % retcode)
+        logging.debug("server metrics agent daemonization returned: %d"
+                      % retcode)
 
     if running_on_linux:
         try:

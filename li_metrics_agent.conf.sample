@@ -4,8 +4,8 @@
 # agent_name - hostname or any other identifier for this server, choose wisely
 agent_name = myagent
 
-# server_metrics_api_token - assigned to your account on loadimpact.com
-server_metrics_api_token = SERVER_METRICS_API_TOKEN
+# server_metrics_token - assigned to your account on loadimpact.com
+server_metrics_token = SERVER_METRICS_API_TOKEN
 
 # server_metrics_api_url - don't change this unless you have a good reason
 server_metrics_api_url = https://api.loadimpact.com/v2/server-metrics

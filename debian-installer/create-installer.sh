@@ -1,5 +1,10 @@
 #!/bin/sh
 
+#
+# 1. Edit src/DEBIAN/control and change the package version number (i.e. the "Version: 1.0-2" line)
+# 2. Run this script from the debian-installer/ directory to build a new debian package.
+#
+
 die() {
   echo $1
   exit 1

@@ -3,7 +3,6 @@ Version: 1.0-1
 Architecture: all
 Maintainer: Load Impact <support@loadimpact.com>
 Installed-Size: 84
-Depends: python2.7 (>= 2.7), python-psutil (>= 0.4.1)
 Provides: servermetrics
 Section: net
 Priority: optional

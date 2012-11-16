@@ -2,8 +2,38 @@
 
 USER=`id -un`
 
-if [ ! "${USER}x" = "rootx" ]; then
-  /bin/echo "You have to be root to install the Load Impact server metrics agent"
+#if [ ! "${USER}x" = "rootx" ]; then
+#  /bin/echo "You have to be root to install the Load Impact server metrics agent"
+#  exit 1
+#fi
+
+PYTHON=`which python`
+HAVE_PYTHON=`echo $?`
+
+if [ ! "${HAVE_PYTHON}x" = "0x" ]; then
+  /bin/echo "Failed to find a Python interpreter (python must be in your path)"
+  exit 1
+fi
+
+PYTHON_VERSION=`${PYTHON} --version 2>&1 |awk '{print $2}'`
+PYTHON_MAJOR_VERSION=`echo ${PYTHON_VERSION} |cut -d\. -f1`
+PYTHON_MINOR_VERSION=`echo ${PYTHON_VERSION} |cut -d\. -f2`
+if [ "${PYTHON_MAJOR_VERSION}" -lt "2" ]; then
+  /bin/echo "That's a VERY old Python installation you have. You REALLY need to update it"
+  exit 1
+elif [ "${PYTHON_MAJOR_VERSION}" -eq "2" ]; then
+  if [ "${PYTHON_MINOR_VERSION}" -lt "5" ]; then
+    /bin/echo "That's a pretty old Python installation you have. You need to update it"
+    exit 1
+  elif [ "${PYTHON_MINOR_VERSION}" -lt "7" ]; then
+    /bin/echo "Your Python version (${PYTHON_MAJOR_VERSION}.${PYTHON_MINOR_VERSION}) is a bit old, we officially support Python 2.7 and later."
+    /bin/echo "You might want to consider upgrading it. Especially if you run into problems with your installation."
+  fi
+fi
+
+HAVE_PSUTIL=`${PYTHON} -c 'import psutil' >/dev/null 2>&1 ; echo $?`
+if [ ! "${HAVE_PSUTIL}x" = "0x" ]; then
+  /bin/echo "Failed to find the psutil Python package (have you installed it?)"
   exit 1
 fi
 

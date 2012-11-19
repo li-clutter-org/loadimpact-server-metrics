@@ -24,9 +24,9 @@ SolidCompression=yes
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-Source: "F:\projects\servermetrics\servermetrics\windows-installer\dist\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "F:\projects\servermetrics\servermetrics\windows-installer\agentremove.cmd"; DestDir: "{app}"; 
-Source: "F:\projects\servermetrics\servermetrics\windows-installer\agentsetup.cmd"; DestDir: "{app}"; AfterInstall: UpdateConfigFile;
+Source: "dist\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "agentremove.cmd"; DestDir: "{app}"; 
+Source: "agentsetup.cmd"; DestDir: "{app}"; AfterInstall: UpdateConfigFile;
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [UninstallRun]

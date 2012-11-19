@@ -83,10 +83,6 @@ fi
 
 sed 's/^server_metrics_token.*/server_metrics_token \= '"${TOKEN}/" ${TMPFILE} >${CONF_FILE}
 
-if [ ! "${HAS_TOKEN_CONF}" = "yes" ]; then
-  echo "server_metrics_token = ${TOKEN}" >>${CONF_FILE}
-fi
-
 [ -d /usr/lib/li_metrics_agent ] && ln -s ${CONF_FILE} /usr/lib/li_metrics_agent/li_metrics_agent.conf
 
 /etc/init.d/li_metrics_agent start

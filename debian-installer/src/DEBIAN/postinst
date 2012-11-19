@@ -14,8 +14,8 @@ if [ -f ${CONF_FILE} ]; then
     AGENT_NAME=`grep "^agent_name" ${CONF_FILE} |awk -F\= '{print $2}' |awk '{print $1}'`
     HAS_AGENT_NAME_CONF="yes"
   fi
-  if grep "^server_metrics_api_token" ${CONF_FILE} >/dev/null ; then
-    TOKEN=`grep "^server_metrics_api_token" ${CONF_FILE} |awk -F\= '{print $2}' |awk '{print $1}'`
+  if grep "^server_metrics_token" ${CONF_FILE} >/dev/null ; then
+    TOKEN=`grep "^server_metrics_token" ${CONF_FILE} |awk -F\= '{print $2}' |awk '{print $1}'`
     HAS_TOKEN_CONF="yes"
   fi
 fi
@@ -81,10 +81,10 @@ else
   sed 's/^agent_name.*/agent_name \= '"${AGENT_NAME}/" ${SAMPLE_CONF_FILE} >${TMPFILE}
 fi
 
-sed 's/^server_metrics_api_token.*/server_metrics_api_token \= '"${TOKEN}/" ${TMPFILE} >${CONF_FILE}
+sed 's/^server_metrics_token.*/server_metrics_token \= '"${TOKEN}/" ${TMPFILE} >${CONF_FILE}
 
 if [ ! "${HAS_TOKEN_CONF}" = "yes" ]; then
-  echo "server_metrics_api_token = ${TOKEN}" >>${CONF_FILE}
+  echo "server_metrics_token = ${TOKEN}" >>${CONF_FILE}
 fi
 
 [ -d /usr/lib/li_metrics_agent ] && ln -s ${CONF_FILE} /usr/lib/li_metrics_agent/li_metrics_agent.conf

@@ -50,7 +50,7 @@ function NextButtonClick(CurPageID: Integer): Boolean;
 begin
   if CurPageID = wpSelectDir then begin     
       ConfigPage.Values[0] := GetIniString('General', 'agent_name', GetComputerNameString(), ExpandConstant('{app}\li_metrics_agent.conf'));
-      ConfigPage.Values[1] := GetIniString('General', 'server_metrics_api_token', 'AGENT_TOKEN', ExpandConstant('{app}\li_metrics_agent.conf'));            
+      ConfigPage.Values[1] := GetIniString('General', 'server_metrics_token', 'AGENT_TOKEN', ExpandConstant('{app}\li_metrics_agent.conf'));            
   end;
   Result := True;
 end;
@@ -69,7 +69,7 @@ begin
   end;
   
   SetIniString('General', 'agent_name', ConfigPage.Values[0], ExpandConstant('{app}\li_metrics_agent.conf'));
-  SetIniString('General', 'server_metrics_api_token', ConfigPage.Values[1], ExpandConstant('{app}\li_metrics_agent.conf'));
+  SetIniString('General', 'server_metrics_token', ConfigPage.Values[1], ExpandConstant('{app}\li_metrics_agent.conf'));
   Exec(ExpandConstant('{app}\agentsetup.cmd'), '', '', SW_SHOWNORMAL, ewWaitUntilTerminated, ResultCode); 
 end;
 

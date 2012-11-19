@@ -2,10 +2,10 @@
 
 USER=`id -un`
 
-#if [ ! "${USER}x" = "rootx" ]; then
-#  /bin/echo "You have to be root to install the Load Impact server metrics agent"
-#  exit 1
-#fi
+if [ ! "${USER}x" = "rootx" ]; then
+  /bin/echo "You have to be root to install the Load Impact server metrics agent"
+  exit 1
+fi
 
 PYTHON=`which python`
 HAVE_PYTHON=`echo $?`

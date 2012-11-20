@@ -179,7 +179,7 @@ keys=file
 
 [handler_file]
 class=handlers.TimedRotatingFileHandler
-interval=midnight
+when=midnight
 backupCount=5
 formatter=simple
 level=DEBUG

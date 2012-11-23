@@ -748,7 +748,8 @@ class AgentLoop(object):
     collection tasks and start scheduler.
     """
 
-    def __init__(self):
+    def __init__(self, options=None):
+        self.options = options
         self.running = False
         self.state = AgentState.IDLE
         self.config = ConfigParser.ConfigParser()
@@ -840,6 +841,14 @@ class AgentLoop(object):
     def run(self):
         self._parse_commands()
 
+        # In test-mode we execute all plugins and prints the output
+        # to stdout. Then exist the main loop.
+        if self.options and self.options.test:
+            for task in self.scheduler.tasks:
+                print "Command: %s" % task.cmd
+                print "    %s" % task._next_line()
+            return
+
         self.reporter.start()
         self.scheduler.start()
         self.running = True
@@ -908,6 +917,10 @@ class AgentLoop(object):
 
 if __name__ == "__main__":
     p = optparse.OptionParser(version=('%%prog %s' % __version__))
+    p.add_option('-c', '--config', type='string', action='store',
+                dest='config_file', default=CONFIG_FILE,
+                help="Specifies the name of the config file. Default is %s." %
+                    CONFIG_FILE)
     p.add_option('-D', '--no-daemon', action='store_false',
                  dest='daemon', default=True,
                  help=("When this option is specified, the server metrics "
@@ -916,11 +929,16 @@ if __name__ == "__main__":
     p.add_option('-P', '--poll-on-start', action='store_true',
                  dest='poll', default=False,
                  help=("Poll server on startup to verify connection."))
+    p.add_option('--test', action='store_true',
+                dest='test', default=False,
+                help="Enable test mode. Runs all plugins once and then exists.")
     opts, args = p.parse_args()
 
     run_as_daemon = opts.daemon if running_on_linux else False
     if run_as_daemon:
         retcode = daemonize()
+
+    CONFIG_FILE = opts.config_file
 
     init_logging()
 
@@ -939,7 +957,7 @@ if __name__ == "__main__":
     if not run_as_daemon:
         print 'press Ctrl-C to stop me'
 
-    loop = AgentLoop()
+    loop = AgentLoop(opts)
     if opts.poll:
         loop.client.poll()
     loop.run()

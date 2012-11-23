@@ -581,12 +581,13 @@ class CPUMetricTask(BuiltinMetricTask):
     """Built-in metric task to measure CPU utilization %."""
 
     def _next_line_builtin(self, args):
-        if len(args) > 2:
-            cpu_index = int(args[2], 10)
+        if len(args) > 1:
+            cpu_index = int(args[1], 10)
             cpu = psutil.cpu_percent(interval=1, percpu=True)
             try:
                 cpu = cpu[cpu_index]
-                return "CPU %d load %s%%|CPU=%s%%;" % (cpu_index, cpu, cpu)
+                return "CPU %d load %s%%|CPU %d=%s%%;" % (cpu_index, cpu,
+                    cpu_index, cpu)
             except IndexError:
                 logging.error("incorrect CPU index: %d" % cpu_index)
                 return None

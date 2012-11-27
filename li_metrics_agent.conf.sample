@@ -13,12 +13,31 @@ server_metrics_api_url = https://api.loadimpact.com/v2/server-metrics
 # proxy settings - comment out to disable proxy
 #proxy_url = https://proxyhost:8080/
 
-# Built-in CPU usage in percent
 [test1]
+# Built-in CPU usage in percent
+#
+# Usage:
+#     command = builtin cpu [index]
+#
+#     optional: index is the CPU to measure starting at 0 and counting up.
+#               If not specified, measurement is of system-wide CPU utilization.
+# 
+# Examples:
+#     command = builtin cpu
+#     command = builtin cpu 0
+#     command = builtin cpu 1
+#
 command = builtin cpu
 
 
 # Built-in memory usage in percent
+#
+# Usage:
+#     command = builtin memory
+#
+# Examples:
+#     command = builtin memory
+#
 [test2]
 command = builtin memory
 

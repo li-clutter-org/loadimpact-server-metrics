@@ -126,3 +126,6 @@ class NagiosPerfDataParsingTests(unittest.TestCase):
             ('load15', '0.122', None, '0.000', '0.000', '0', None),
         ]
         assertOutputMatchesExpected(self, output, expected)
+
+if __name__ == '__main__':
+    sys.exit(unittest.main())

@@ -92,3 +92,6 @@ class ConfigPerfDataOptsParsingTests(unittest.TestCase):
     def test_multi_metric_mixed_unit_double_quoted_space_separator(self):
         assertOptsMatchesExpected(self, '"time" "size":b',
                                   {'time': None, 'size': 'b'})
+
+if __name__ == '__main__':
+    sys.exit(unittest.main())

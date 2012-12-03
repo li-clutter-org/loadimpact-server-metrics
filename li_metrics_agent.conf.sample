@@ -201,7 +201,7 @@ class=handlers.TimedRotatingFileHandler
 when=midnight
 backupCount=5
 formatter=simple
-level=DEBUG
+level=INFO
 args=('li_metrics_agent.log',) # Use a full path to the log file, make sure the
                                # account running the service have necessary
                                # read/write permissions.

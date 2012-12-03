@@ -30,6 +30,7 @@ import logging.handlers
 import math
 import optparse
 import os
+import platform
 import Queue
 import re
 import signal
@@ -75,6 +76,7 @@ if sys.platform.startswith('linux'):
 else:
     PANIC_LOG_PATH = os.path.join(PROGRAM_DIR, PANIC_LOG_FILENAME)
 PROTOCOL_VERSION = "1"
+PLATFORM_STRING = platform.platform()
 AGENT_USER_AGENT_STRING = ("LoadImpactServerMetricsAgent/%s "
                            "(Load Impact; http://loadimpact.com);"
                            % __version__)
@@ -326,7 +328,8 @@ class ApiClient(object):
         data = {
             'name': self.agent_name,
             'version': PROTOCOL_VERSION,
-            'version_agent': __version__
+            'version_agent': __version__,
+            'os': PLATFORM_STRING
         }
         logging.debug(json.dumps(data))
         return self._request('POST',
@@ -878,7 +881,7 @@ class AgentLoop(object):
                                     for task in self.scheduler.tasks:
                                         task.set_state(state)
                                     state_name = AgentState.get_name(state)
-                                    logging.debug("switching state to %s "
+                                    logging.info("switching state to %s "
                                                   "(%d)"
                                                   % (state_name, state))
                                 else:
@@ -952,7 +955,7 @@ if __name__ == "__main__":
             with open(PID_FILE, 'w') as f:
                 f.write(str(os.getpid()))
         except IOError, e:
-            logging.debug("unable to write pid file \"%s\": %s" % (PID_FILE,
+            logging.error("unable to write pid file \"%s\": %s" % (PID_FILE,
                                                                    repr(e)))
 
     if not run_as_daemon:

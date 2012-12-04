@@ -64,6 +64,11 @@ You then need to manually configure a li\_metrics\_agent.conf file. You can use 
 
 It is usually a good idea to change the name setting as well.
 
+Install dependencies using pip.
+```
+pip install -r requirements.txt
+```
+
 Start the server metrics agent by running
 ```
 python li\_metrics\_agent.py

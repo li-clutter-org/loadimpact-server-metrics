@@ -2,6 +2,8 @@
 *.log
 *.conf
 
+*.tar.gz
+
 *.deb
 debian-installer/li_metrics_agent*
 windows-installer/build/*

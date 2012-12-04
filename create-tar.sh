@@ -13,7 +13,7 @@ cp README* ${TMP}
 cp LICENSE ${TMP}
 cp requirements.txt ${TMP}
 cp li_metrics_agent.conf* ${TMP}
-cp ${TMP}/li_metrics_agent.conf ${TMP}/li_metrics_agent.conf.sample
+cp ${TMP}/li_metrics_agent.conf.sample ${TMP}/li_metrics_agent.conf
 
 # Tar tmp dir
 cd /tmp

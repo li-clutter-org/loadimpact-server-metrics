@@ -1,4 +1,6 @@
 *.py[co]
 *.log
 *.conf
+
 *.deb
+debian-installer/li_metrics_agent*

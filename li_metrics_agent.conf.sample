@@ -198,10 +198,8 @@ keys=file
 
 [handler_file]
 class=handlers.TimedRotatingFileHandler
-when=midnight
-backupCount=5
 formatter=simple
 level=INFO
-args=('li_metrics_agent.log',) # Use a full path to the log file, make sure the
-                               # account running the service have necessary
-                               # read/write permissions.
+args=('server_metrics_agent.log', 'midnight', 1, 5) # Use a full path to the log file, make sure the
+                                                    # account running the service have necessary
+                                                    # read/write permissions.

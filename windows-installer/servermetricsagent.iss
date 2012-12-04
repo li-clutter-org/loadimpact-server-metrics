@@ -1,8 +1,8 @@
 
-#define MyAppName "ServerMetrics Agent"
+#define MyAppName "Server Metrics Agent"
 #define MyAppVersion "1.0"
-#define MyAppPublisher "Loadimpact"
-#define MyAppURL "http://www.loadimpact.com/"
+#define MyAppPublisher "Load Impact"
+#define MyAppURL "http://loadimpact.com/"
 
 [Setup]
 AppId={{F49A05C3-ECFC-423E-B49D-F9737AF86297}
@@ -16,7 +16,7 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName={pf}\{#MyAppName}
 DefaultGroupName=ServerMetrics
 AllowNoIcons=yes
-OutputBaseFilename=ServerMetricsSetup(x64)
+OutputBaseFilename=ServerMetricsAgentSetup
 Compression=lzma
 SolidCompression=yes
 
@@ -39,10 +39,10 @@ var
 procedure InitializeWizard;
 begin
   ConfigPage := CreateInputQueryPage(wpSelectDir,
-    'Agent information', 'Agent name and token',
-    'Please enter a unique name for this agent and the token you received from Loadimpact.com, then click Next.');
-  ConfigPage.Add('Agent Name:', False);
-  ConfigPage.Add('Agent Token:', False);
+    'Server metrics agent information', 'Server metrics agent name and token',
+    'Please enter a unique name for this server metrics agent and the token found on your account page on loadimpact.com, then click Next.');
+  ConfigPage.Add('Server metrics agent name:', False);
+  ConfigPage.Add('Server metrics agent token:', False);
   ConfigPage.Values[0] := GetComputerNameString();
 end;
 

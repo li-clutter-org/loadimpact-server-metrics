@@ -4,3 +4,6 @@
 
 *.deb
 debian-installer/li_metrics_agent*
+windows-installer/build/*
+windows-installer/dist/*
+windows-installer/Output/*

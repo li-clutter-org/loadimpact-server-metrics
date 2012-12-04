@@ -20,6 +20,7 @@ limitations under the License.
 from __future__ import division
 
 import base64
+import codecs
 import ConfigParser
 # set_tunnel() is not supported in Python26
 import httplib27 as httplib
@@ -757,7 +758,7 @@ class AgentLoop(object):
         self.running = False
         self.state = AgentState.IDLE
         self.config = ConfigParser.ConfigParser()
-        self.config.read(CONFIG_FILE)
+        self.config.readfp(codecs.open(CONFIG_FILE, 'r', 'utf-8'))
         try:
             agent_name = self.config.get('General', 'agent_name')
             token = self.config.get('General', 'server_metrics_token')

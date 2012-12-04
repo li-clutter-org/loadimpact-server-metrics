@@ -14,7 +14,7 @@ die() {
 
 # Source files
 CONTROL="src/DEBIAN/control"
-AGENT_FILES="../li_metrics_agent.py ../README ../LICENSE ../socket27.py ../httplib27.py"
+AGENT_FILES="../li_metrics_agent.py ../README.md ../LICENSE ../socket27.py ../httplib27.py"
 AGENT_CONF_SAMPLE="../li_metrics_agent.conf.sample"
 INIT_D_FILE="src/etc/init.d/li_metrics_agent"
 INSTALLSCRIPTS="src/DEBIAN/preinst src/DEBIAN/postinst"

@@ -896,7 +896,11 @@ class AgentLoop(object):
                                           % str(j['state']))
 
                         try:
-                            self.poll_rate = int(j['poll_rate'])
+                            new_poll_rate = int(j['poll_rate'])
+                            if new_poll_rate != self.poll_rate:
+                                logging.info("Switching poll rate from %s to %s."
+                                        % (str(self.poll_rate), str(new_poll_rate)))
+                            self.poll_rate = new_poll_rate
                         except KeyError:
                             logging.error("'poll_rate' not found in JSON "
                                           "response")

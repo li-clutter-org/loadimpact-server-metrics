@@ -1,7 +1,4 @@
-#!/bin/sh
-
-# If symlink does not exist, create it
-[ -h /etc/rc2.d/S99li_metrics_agent ] || ln -s /etc/init.d/li_metrics_agent /etc/rc2.d/S99li_metrics_agent
+#!/bin/bash
 
 CONF_FILE=/etc/li_metrics_agent/li_metrics_agent.conf
 SAMPLE_CONF_FILE=/etc/li_metrics_agent/li_metrics_agent.conf.sample
@@ -87,6 +84,5 @@ sed 's/^server_metrics_token.*/server_metrics_token \= '"${TOKEN}/" ${TMPFILE} >
 # Create symlink to config file, if it does not already exist
 [ -h /usr/lib/li_metrics_agent/li_metrics_agent.conf ] || ln -s ${CONF_FILE} /usr/lib/li_metrics_agent/li_metrics_agent.conf
 
-/etc/init.d/li_metrics_agent stop
-/etc/init.d/li_metrics_agent start
+li-metrics-agent-reload
 

@@ -1,0 +1,4 @@
+#!/bin/bash
+
+initctl stop li_metrics_agent
+initctl start li_metrics_agent

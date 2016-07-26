@@ -1,11 +1,13 @@
 *.py[co]
 *.log
-*.conf
 
 *.tar.gz
+.DS_Store
 
 *.deb
-debian-installer/li_metrics_agent*
 windows-installer/build/*
 windows-installer/dist/*
 windows-installer/Output/*
+
+.DS_Store
+dev-notes/*

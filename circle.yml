@@ -1,0 +1,15 @@
+machine:
+  timezone:
+    Europe/Stockholm
+dependencies:
+  pre:
+    - gem install package_cloud --no-rdoc --no-ri
+    - gem install fpm --no-rdoc --no-ri
+    - sudo apt-get install rpm
+
+deployment:
+  auto:
+    branch: [master, develop]
+    owner: loadimpact
+    commands:
+      - cd linux-installer && bash create-installer.sh

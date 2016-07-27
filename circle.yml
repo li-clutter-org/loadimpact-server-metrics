@@ -9,7 +9,7 @@ dependencies:
 
 deployment:
   auto:
-    branch: [master]
+    branch: [master, develop]
     owner: loadimpact
     commands:
       - cd linux-installer && bash create-installer.sh

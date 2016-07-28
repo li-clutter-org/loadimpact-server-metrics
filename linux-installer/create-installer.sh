@@ -50,8 +50,8 @@ package_cloud push loadimpact/server-metrics-agent/ubuntu/precise ${deb_file_nam
 package_cloud push loadimpact/server-metrics-agent/ubuntu/trusty ${deb_file_name}
 package_cloud push loadimpact/server-metrics-agent/el/6 ${rpm_file_name}
 
-rm deb_file_name
-rm rpm_file_name
+rm ${deb_file_name}
+rm ${rpm_file_name}
 
 # SYSTEMD (Ubuntu 16-04, Centos 7)
 for package_type in deb rpm; do

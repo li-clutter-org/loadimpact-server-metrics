@@ -41,7 +41,7 @@ Install last version of the package
 sudo apt-get install li-metrics-agent
 ```
 
-Run configuration dialog. You will be asked to give the agent a name and your server metrics token. The name is only for identification in the Load Impact application. It is recomended to choose short readable name. Name and token will be written in `config-file`. You can read about advanced configuration [here](ADVANCED.md)
+Run configuration dialog. You will be asked to give the agent a name and your server metrics token. The name is only for identification in the Load Impact application. It is recomended to choose short readable name. Name and token will be written in `config-file`. You can read about advanced configuration [here](2-CONFIGURE.md).
 
 ````
 sudo li-metrics-agent-config
@@ -50,7 +50,7 @@ sudo li-metrics-agent-config
 Output like `li_metrics_agent start/running, process XXXX` means that agent installed as a service and started. It will automaticly restarted after a crash or server reboot.
 
 You can also press 'Check installation' button on `https://app.loadimpact.com/server-agents/load-impact` page. If new entry comes to `Monitoring tools` list then agent is succefully installed.
-![alt tag](check_installation.jpg)
+![alt tag](check_installation.png)
 
 
 If something goes wrong it's worth to check `.log` file:
@@ -89,7 +89,7 @@ Install last version of the package
 sudo yum install li-metrics-agent
 ```
 
-Run configuration dialog. You will be asked to give the agent a name and your server metrics token. The name is only for identification in the Load Impact application. It is recomended to choose short readable name. Name and token will be written in `config-file`. You can read about advanced configuration [here](ADVANCED.md)
+Run configuration dialog. You will be asked to give the agent a name and your server metrics token. The name is only for identification in the Load Impact application. It is recomended to choose short readable name. Name and token will be written in `config-file`. You can read about advanced configuration [here](2-CONFIGURE.md)
 
 ````
 sudo li-metrics-agent-config

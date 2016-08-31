@@ -27,6 +27,8 @@ Dependencies
 * pyinstaller: [http://www.pyinstaller.org/](http://www.pyinstaller.org/)
 
 #### Tar
+Download [tar](https://s3.amazonaws.com/loadimpact/server-metrics-agent/li-metrics-agent_1.1.tar.gz)
+
 Unpack the tar in a location you wish to store it with 
 ```
 tar -xf li-metrics-agent_VERSION.tar.gz

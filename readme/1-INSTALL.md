@@ -117,7 +117,29 @@ Next see [configuration section](2-CONFIGURE.md) for advanced agent configuratio
 
 
 ### Windows
-If you have the installer, run it and the server metrics agent will install itself as a service. During the installation you will be asked to give the server metrics agent a name and also to provide your server metrics token. The server metrics token can be generated/found on your [https://app.loadimpact.com/server-agents/load-impact](https://app.loadimpact.com/server-agents/load-impact)
+
+Download [Windows installer](https://s3.amazonaws.com/loadimpact/server-metrics-agent/server-metrics-agent-1.1-win.amd64.exe), run it and the server metrics agent will install itself as a "Load Impact Server metrics agent" service. You can find it in local serivces list under installation.
+
+During the installation you will be asked to give the server metrics agent a name and also to provide your server metrics token. The server metrics token can be generated/found on your [https://app.loadimpact.com/server-agents/load-impact](https://app.loadimpact.com/server-agents/load-impact)
+
+Installing, uninstalling, starting and stopping the service needs to be done as administrator.  
+
+Install as a Windows service:
+```
+li\_metrics\_agent_service.exe --startup auto install
+```
+(Run li\_metrics\_agent_service.exe without arguments to see additional options)
+
+Uninstall service:
+```
+li\_metrics\_agent_service.exe remove
+```
+
+Start or stop service:
+```
+sc start LoadImpactServerMetricsAgent
+sc stop LoadImpactServerMetricsAgent
+```
 
 Next see [configuration section](2-CONFIGURE.md) for advanced agent configuration and [running section](3-RUN.md) for make test powered by agent running.
 

@@ -13,6 +13,8 @@ Quick links
 - [Configuration](readme/2-CONFIGURE.md)
 - [Building from source](readme/1b-BUILD.md)
 - [Running tests](readme/3-RUN.md)
+- [Windows installer](https://s3.amazonaws.com/loadimpact/server-metrics-agent/server-metrics-agent-1.1-win.amd64.exe)
+- [Tar](https://s3.amazonaws.com/loadimpact/server-metrics-agent/li-metrics-agent_1.1.tar.gz)
 - [Tutorial article](http://support.loadimpact.com/knowledgebase/articles/265482-server-monitoring-formerly-server-metric-agents)
 - [Changelog](CHANGELOG.md)
 - [Apache License v2.0](LICENSE)

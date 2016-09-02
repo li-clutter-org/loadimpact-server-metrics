@@ -47,8 +47,6 @@ done
 /bin/echo "enter a token, or enter the wrong token, your agent will not be able to send"
 /bin/echo "any data to Load Impact."
 /bin/echo ""
-/bin/echo "You can find out what your token is by visiting https://loadimpact.com/account/"
-/bin/echo ""
 
 while true 
 do

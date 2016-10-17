@@ -44,15 +44,15 @@ pip install -r requirements.txt
 
 Start the agent by running
 ```
-python li\_metrics\_agent.py
+python li_metrics_agent.py
 ```
 If you do not want the agent to run as a daemon, use the -D flag.
 ```
-python li\_metrics\_agent.py -D
+python li_metrics_agent.py -D
 ```
 If you want to specify a different config file than the default, use the -c flag.
 ```
-python li\_metrics\_agent.py -c /path/to/config.file
+python li_metrics_agent.py -c /path/to/config.file
 ```
 
 
@@ -69,13 +69,13 @@ Installing, uninstalling, starting and stopping the service needs to be done as 
 
 Install as a Windows service:
 ```
-li\_metrics\_agent_service.exe --startup auto install
+li_metrics_agent_service.exe --startup auto install
 ```
 (Run li\_metrics\_agent_service.exe without arguments to see additional options)
 
 Uninstall service:
 ```
-li\_metrics\_agent_service.exe remove
+li_metrics_agent_service.exe remove
 ```
 
 Start or stop service:

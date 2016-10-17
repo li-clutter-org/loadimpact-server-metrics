@@ -2,7 +2,7 @@ Installation
 ============
 
 
-Gettting the agent token
+Getting the agent token
 ------------------------------
 
 - Login Load Impact Account
@@ -47,7 +47,7 @@ Run the configuration tool. You will be asked to give the agent a name and your 
 sudo li-metrics-agent-config
 ````
 
-Output like `li_metrics_agent start/running, process XXXX` means that the agent has properly installed as a service and started correctly. It will be automaticly restarted after a crash or server reboot.
+Output like `li_metrics_agent start/running, process XXXX` means that the agent has properly installed as a service and started correctly. It will be automatically restarted after a crash or server reboot.
 
 You can also press the 'Check installation' button on the `https://app.loadimpact.com/server-agents/load-impact` page. If a new entry appears in the list then the agent has been succefully installed.
 ![alt tag](check_installation.png)
@@ -72,13 +72,13 @@ Next see [configuration section](2-CONFIGURE.md) for advanced agent configuratio
 
 ### Centos
 
-Install `psutil` dependency (skip this step if `psutil` has been already installed)
+Install the `psutil` dependency (skip this step if `psutil` has already been installed)
 ```
 sudo yum install epel-release
 sudo yum install python-psutil
 ```
 
-Packagecloud.io provides setup script that manages `.rpm` package installation included `https-transport`setup, setting PGP verification keys and system `.list` file. You can see details [here](https://packagecloud.io/loadimpact/server-metrics-agent/install). So quick way is to download and run this script. Alternatively you can run commands manually folowing [instructions](https://packagecloud.io/loadimpact/server-metrics-agent/install) on `manual` tab.
+Packagecloud.io provides a setup script that manages `.deb` package installation including `https-transport` setup, setting PGP verification keys and adding a system `.list` file. You can see details [here](https://packagecloud.io/loadimpact/server-metrics-agent/install). So quick way is to download and run this script. Alternatively you can run the commands manually by following the [instructions](https://packagecloud.io/loadimpact/server-metrics-agent/install) in the `manual` tab.
 ```
 wget https://packagecloud.io/install/repositories/loadimpact/server-metrics-agent/script.rpm.sh
 sudo bash script.rpm.sh
@@ -89,22 +89,22 @@ Install last version of the package
 sudo yum install li-metrics-agent
 ```
 
-Run configuration dialog. You will be asked to give the agent a name and your server metrics token. The name is only for identification in the Load Impact application. It is recomended to choose short readable name. Name and token will be written in `config-file`. You can read about advanced configuration [here](2-CONFIGURE.md)
+Run the configuration tool. You will be asked to give the agent a name and your server metrics token. The name is used for identification in the Load Impact application so it is recomended to choose a short readable name. The name and token will be written to the `config-file`. You can read about advanced configuration of Nagios and custom metrics plugins [here](2-CONFIGURE.md).
 
 ````
 sudo li-metrics-agent-config
 ````
 
-You can also press 'Check installation' button on `https://app.loadimpact.com/server-agents/load-impact` page. If new entry comes to `Monitoring tools` list then agent is succefully installed.
-![alt tag](check_installation.jpg)
+You can also press the 'Check installation' button on the `https://app.loadimpact.com/server-agents/load-impact` page. If a new entry appears in the list then the agent has been succefully installed.
+![alt tag](check_installation.png)
 
 
-If something goes wrong it's worth to check `.log` file:
+If something goes wrong it's recommended you check the `.log` file:
 ```
 tail /var/log/li_metrics_agent.log
 ```
 
-You can manage it a usual linux service
+You can manage the agent as a regular Linux service
 ```
 # Upstart systems (Centos 6)
 sudo initctl status|stop|start|restart li_metrics_agent
@@ -128,13 +128,13 @@ Installing, uninstalling, starting and stopping the service needs to be done as 
 
 Install as a Windows service:
 ```
-li\_metrics\_agent_service.exe --startup auto install
+li_metrics_agent_service.exe --startup auto install
 ```
-(Run li\_metrics\_agent_service.exe without arguments to see additional options)
+(Run `li_metrics_agent_service.exe` without arguments to see additional options)
 
 Uninstall service:
 ```
-li\_metrics\_agent_service.exe remove
+li_metrics_agent_service.exe remove
 ```
 
 Start or stop service:

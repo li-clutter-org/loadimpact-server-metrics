@@ -1,12 +1,12 @@
 Configuring
 ===========
 
-Note: In this article we'll be using Ubuntu 14.04, you can do similar steps working with others linux distribution.
+Note: In this article we'll be using Ubuntu 14.04, you can follow similar steps with other Linux distributions.
 
 Configure custom metrics using psutil
 -------------------------------------
 
-Lets create custom metric using `psutil.virtual_memory()`. First try it in console to see output:
+Let's create a custom metric using `psutil.virtual_memory()`. First, try it in a console to see output:
 ```
 python
 >>> import psuitl;
@@ -24,9 +24,9 @@ Assuming we want to have active memory in MB, we can write a python command:
 python -c 'import psutil; mem = psutil.virtual_memory().active/1024/1024; print "Memory active %sMB |MemActive=%sMB;" % (mem,mem)'
 Memory active 249MB |MemActive=249MB;
 ```
-The output of a command is valid nagios plugin output that is readable for agent. Here `MemActive` is label, `249` is a value and `MB` is a unit. 
+The output of the command is valid nagios plugin output that is readable by the agent. Here `MemActive` is the label, `249` is the value and `MB` is the unit.
 
-Let's update agents `config-file`:
+Let's update the agent's `config-file`:
 ```
 sudo vi /usr/lib/li_metrics_agent/li_metrics_agent.conf
 
@@ -39,16 +39,16 @@ Restart agent
 sudo initctl restart li_metrics_agent
 ```
 
-Run load test and add new metrics to the test result page! 
-See [running section](3-RUN.md) for make test powered by agent running.
+Run a load test and add the new metrics to the test result page!
+See [running section](3-RUN.md) for instruction how to configure a test to collect metrics from an agent and how to visualize the collected data on the test result page.
 
-Note: instead of providing a single command we can creat a python script and add a path to the command option.
+Note: instead of providing a single command we can create a python script and add a path to the command option.
 We'll demonstrate that approach in the next section.
 
 Configure custom metrics using Nagios plugins
 ---------------------------------------------
 
-Let's add standart Nagios plugin to Server Metrics Agent installed on your server.
+Let's add a standard Nagios plugin to the Server Metrics Agent installed on your server.
 
 First install nagios plugins on your server
 
@@ -56,7 +56,7 @@ First install nagios plugins on your server
 sudo apt-get install nagios-plugins 
 ```
 
-Select plugin you want to add, here we use `check_disk`. Let's where it was installed and then run `check-disk` to see possible options:
+Select the plugin you want to add, here we'll use `check_disk`. Find where it was installed and then run `check-disk` to see possible options:
 ```
 $ find / -type f -name 'check_disk'
 /usr/lib/nagios/plugins/check_disk
@@ -79,7 +79,7 @@ Examples:
 
 ```
 
-Let's run commands we need so we can see output format:
+Let's run the commands we need so we can see output format:
 ```
 $ /usr/lib/nagios/plugins/check_disk -w 10% -c 5% -p /
 DISK OK - free space: / 6603 MB (88% inode=88%);| /=896MB;7131;7527;0;7924
@@ -87,14 +87,14 @@ DISK OK - free space: / 6603 MB (88% inode=88%);| /=896MB;7131;7527;0;7924
 $ /usr/lib/nagios/plugins/check_http -H --ssl loadimpact.com
 HTTP OK: HTTP/1.1 301 Moved Permanently - 364 bytes in 0.186 second response time |time=0.186482s;;;0.000000 size=364B;;;0
 ```
-The output of a command is valid nagios plugin output that is readable for agent. Here `time` and `size` are labels, `s` and `B` are units. 
+The output of a command is valid nagios plugin output that is readable by the agent. Here `time` and `size` are labels, `s` and `B` are units.
 
 Open agent config file:
 ```
 vi /usr/lib/li_metrics_agent/li_metrics_agent.conf
 ```
 
-Add command to agent config (we assume we have 4 predefined metrics by default):
+Add commands to the agent config file (we assume we have 4 predefined metrics by default):
 ```
 # /usr/lib/li_metrics_agent/li_metrics_agent.conf
 [test5]
@@ -111,16 +111,16 @@ Restart agent:
 sudo initctl restart li_metrics_agent
 ```
 
-Now when you run Load Impact tests you can see new 3 metrics ("/", "time" and "size") appeared.
+Now when you run Load Impact tests you can see that 3 new metrics ("/", "time" and "size") have appeared.
 
 ### Fine tuning: custom metric names
 
-We can use custom metric name using `sed` command. In its simplest form, you can change one name to another name using the following syntax: 
+We can change the metric name by using the `sed` command. In its simplest form, you can change one name to another name using the following syntax:
 ```
 sed 's/old_metric_name/new_metric_name/'
 ```
 
-Let's create custom `disk-metric` command by creating `disk-metric.sh` bash script
+We can also put the custom metric commands in a `disk-metric.sh` bash script
 
 ```
 sudo vi /usr/local/bin/disk-metric.sh
@@ -141,7 +141,7 @@ sudo vi /usr/local/bin/li-http-metric.sh
 ```
 
 
-Now change folowing lines in agent config file:
+Now change the folowing lines in the agent config file:
 ```
 [test5]
 command = bash disk-metric.sh
@@ -157,7 +157,7 @@ Restart `li_metrics_agent` service.
 sudo initctl restart li_metrics_agent
 ```
 
-Run load test and add new metrics to the test result page! 
-See [running section](3-RUN.md) for make test powered by agent running.
+Run a load test and add the new metrics to the test result page!
+See [running section](3-RUN.md) for instruction how to configure a test to collect metrics from an agent and how to visualize the collected data on the test result page.
 
 ![alt tag](custom_metrics.png)

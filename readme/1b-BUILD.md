@@ -1,7 +1,7 @@
 Building from scratch
 =====================
 
-If you want to build server metrics agent from scratch here is some notes for you.
+If you want to build the server metrics agent from scratch then here are some notes to help you out.
 
 
 Files
@@ -29,11 +29,11 @@ Dependencies
 #### Tar
 Download [tar](https://s3.amazonaws.com/loadimpact/server-metrics-agent/li-metrics-agent_1.1.tar.gz)
 
-Unpack the tar in a location you wish to store it with 
+Unpack the tar in a location where you wish to store it 
 ```
 tar -xf li-metrics-agent_VERSION.tar.gz
 ```
-You then need to manually configure a li\_metrics\_agent.conf file. You can use the li\_metrics\_agent.conf.sample as a template. The only setting you need to change in order to get started is the server\_metrics\_token. The server metrics token can be found on your [account page on loadimpact.com](https://loadimpact.com/account#tokens)
+You then need to manually configure a li\_metrics\_agent.conf file. You can use the li\_metrics\_agent.conf.sample as a template. The only setting you need to change in order to get started is the server\_metrics\_token. The server metrics token can be found under the ["Monitoring" page at app.loadimpact.com](https://app.loadimpact.com/server-agents/load-impact)
 
 It is usually a good idea to change the name setting as well.
 
@@ -42,11 +42,11 @@ Install dependencies using pip.
 pip install -r requirements.txt
 ```
 
-Start the server metrics agent by running
+Start the agent by running
 ```
 python li\_metrics\_agent.py
 ```
-If you do not want the server metrics agent to run as a daemon, use the -D flag.
+If you do not want the agent to run as a daemon, use the -D flag.
 ```
 python li\_metrics\_agent.py -D
 ```
@@ -61,12 +61,11 @@ Build instructions
 ### Windows
 To build the Windows executable with pyinstaller, you first need to install python 2.7 (duh!), pyinstaller, psutil and pywin32 and InnoSetup.
 
-From a CMD window, enter the windows-install directory and run makepy2exe.cmd from there.  This will create
-all necessary files in windows-install/dist
+From a CMD window, enter the windows-install directory and run makepy2exe.cmd from there. This will create all necessary files in windows-install/dist
 
 Compile li\_metrics\_agent_service.py by pyinstaller then create Windows Installer exe-file by InnoSetup. A sample config file for InnoSetup (http://www.jrsoftware.org/isinfo.php) is included in the windows-installer directory. 
 
-Installing, uninstalling, starting and stopping the service needs to be done as administrator.  
+Installing, uninstalling, starting and stopping the service needs to be done as an administrator.
 
 Install as a Windows service:
 ```

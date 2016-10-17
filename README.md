@@ -22,9 +22,9 @@ Quick links
 Usage
 -----
 
-- Register Load Impact account
-- [Install](readme/1-INSTALL.md) Loadimpact Server Metrics Agent as a service on your server
-- [Configure](readme/2-CONFIGURE.md) Server Metrics Agent and attach it to Load Impact test
+- Register a Load Impact account
+- [Install](readme/1-INSTALL.md) the Load Impact Server Metrics Agent as a service on your server
+- [Configure](readme/2-CONFIGURE.md) the Load Impact Server Metrics Agent to collect metrics from your machine, Nagios and/or custom plugins
 - [Run](readme/3-RUN.md) load tests and collect metrics!
 
 

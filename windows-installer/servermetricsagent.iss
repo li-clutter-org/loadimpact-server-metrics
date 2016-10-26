@@ -1,6 +1,6 @@
 
 #define MyAppName "Server Metrics Agent"
-#define MyAppVersion "1.0"
+#define MyAppVersion "1.1"
 #define MyAppPublisher "Load Impact"
 #define MyAppURL "http://loadimpact.com/"
 
@@ -16,7 +16,7 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName={pf}\{#MyAppName}
 DefaultGroupName=ServerMetrics
 AllowNoIcons=yes
-OutputBaseFilename=ServerMetricsAgentSetup
+OutputBaseFilename=server-metrics-agent-{#MyAppVersion}-win.amd64
 Compression=lzma
 SolidCompression=yes
 

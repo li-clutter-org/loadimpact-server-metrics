@@ -19,7 +19,7 @@ systemd_dir=/lib/systemd/system
 if [[ $CIRCLE_BRANCH = "develop" ]]; then
   echo $(date)
   package_name+="-dev"
-  version=dev_version
+  version="${dev_version}"
   iteration+=".$(date +%Y%m%d.%H%M)"
 fi
 

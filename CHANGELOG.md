@@ -1,3 +1,5 @@
+
+### 1.1
 - [feat]  Compatibility with `psutil` versions form 0.4.0 up to latest 4.3.0
 - [linux] Remove configuration dialog from postinstall script into `li-metrics-agent-config` command
 - [linux] Distribute .RPM package

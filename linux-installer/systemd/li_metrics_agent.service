@@ -1,0 +1,11 @@
+[Unit]
+Description=Load Impact Agent for server metrics
+After=multi-user.target
+
+[Service]
+Type=idle
+ExecStart=/usr/bin/li-metrics-agent-run
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

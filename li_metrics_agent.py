@@ -23,7 +23,6 @@ import base64
 import codecs
 import ConfigParser
 # set_tunnel() is not supported in Python26
-import httplib27 as httplib
 import json
 import logging
 import logging.config
@@ -35,12 +34,18 @@ import platform
 import Queue
 import re
 import signal
-import socket27 as socket
 import subprocess
 import sys
 import threading
 import time
 import traceback
+
+if sys.version_info < (2,7):
+   import httplib27 as httplib
+   import socket27 as socket
+else:
+   import httplib
+   import socket
 
 running_on_linux = sys.platform.startswith('linux')
 if running_on_linux:
@@ -59,7 +64,7 @@ except ImportError:
 __author__ = "Load Impact"
 __copyright__ = "Copyright (c) 2012, Load Impact"
 __license__ = "Apache License v2.0"
-__version__ = "1.0"
+__version__ = "1.1"
 __email__ = "support@loadimpact.com"
 
 frozen = getattr(sys, 'frozen', '')
@@ -219,6 +224,25 @@ class AgentState(object):
     def is_valid(state):
         return True if state in [AgentState.IDLE, AgentState.ACTIVE] else False
 
+class PsutilAdapter(object):
+    """Adapter for psutil methods calls depends on psutil current version"""
+
+    @staticmethod
+    def normalized_version():
+        # psutil versions are simple integers as x.x.x
+        v = psutil.__version__
+        return tuple(map(int, (v.split("."))))
+
+    @classmethod
+    def version_gte_than(self, version_tuple):
+        return self.normalized_version() >= version_tuple
+
+    @classmethod
+    def net_io_counters(self, pernic=False):
+        if self.version_gte_than((1,0,0)):
+            return psutil.net_io_counters(pernic=pernic)
+        else:
+            return psutil.network_io_counters(pernic=pernic)
 
 class NagiosPluginExitCode(object):
     """Enum mapping process exit codes to Nagios service states."""
@@ -648,7 +672,7 @@ class NetworkMetricTask(RateBasedMetrics):
         interface = ""
         if len(args) > 1 and args[1].lower() not in valid_metrics:
             interface = args[1].replace("'", "")
-            counters = psutil.network_io_counters(pernic=True)
+            counters = PsutilAdapter.net_io_counters(pernic=True)
             try:
                 counters = counters[interface]
             except KeyError:
@@ -658,7 +682,7 @@ class NetworkMetricTask(RateBasedMetrics):
             # Format for label name in the report line below
             interface = "_" + interface
         else:
-            counters = psutil.network_io_counters(pernic=False)
+            counters = PsutilAdapter.net_io_counters(pernic=False)
 
         metric = 'bps'
         metric_index = 2 if interface else 1

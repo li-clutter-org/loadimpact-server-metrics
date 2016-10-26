@@ -22,11 +22,13 @@ import threading
 import win32service
 import win32serviceutil
 import win32event
+import servicemanager
+import sys
 
 __author__ = "Load Impact"
 __copyright__ = "Copyright 2012, Load Impact"
 __license__ = "Apache License v2.0"
-__version__ = "0.0.7"
+__version__ = "1.1"
 __email__ = "support@loadimpact.com"
 
 
@@ -72,4 +74,9 @@ class AgentService(win32serviceutil.ServiceFramework):
         win32event.SetEvent(self.hWaitStop)
 
 if __name__ == '__main__':
-    win32serviceutil.HandleCommandLine(AgentService)
+    if len(sys.argv) == 1:
+        servicemanager.Initialize()
+        servicemanager.PrepareToHostSingle(AgentService)
+        servicemanager.StartServiceCtrlDispatcher()
+    else:
+        win32serviceutil.HandleCommandLine(AgentService)

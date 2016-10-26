@@ -1,7 +1,4 @@
-#!/bin/sh
-
-# If symlink does not exist, create it
-[ -h /etc/rc2.d/S99li_metrics_agent ] || ln -s /etc/init.d/li_metrics_agent /etc/rc2.d/S99li_metrics_agent
+#!/bin/bash
 
 CONF_FILE=/etc/li_metrics_agent/li_metrics_agent.conf
 SAMPLE_CONF_FILE=/etc/li_metrics_agent/li_metrics_agent.conf.sample
@@ -50,8 +47,6 @@ done
 /bin/echo "enter a token, or enter the wrong token, your agent will not be able to send"
 /bin/echo "any data to Load Impact."
 /bin/echo ""
-/bin/echo "You can find out what your token is by visiting https://loadimpact.com/account/"
-/bin/echo ""
 
 while true 
 do
@@ -87,6 +82,5 @@ sed 's/^server_metrics_token.*/server_metrics_token \= '"${TOKEN}/" ${TMPFILE} >
 # Create symlink to config file, if it does not already exist
 [ -h /usr/lib/li_metrics_agent/li_metrics_agent.conf ] || ln -s ${CONF_FILE} /usr/lib/li_metrics_agent/li_metrics_agent.conf
 
-/etc/init.d/li_metrics_agent stop
-/etc/init.d/li_metrics_agent start
+li-metrics-agent-reload
 

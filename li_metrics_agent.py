@@ -205,7 +205,10 @@ def check_output(*popenargs, **kwargs):
     """Based on check_output in Python 2.7 subprocess module."""
     if 'stdout' in kwargs:
         raise ValueError('stdout argument not allowed, it will be overridden.')
-    process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
+    """https://github.com/pyinstaller/pyinstaller/wiki/Recipe-subprocess"""
+    kwargs.pop('stdin', None)
+    kwargs.pop('stderr', None)
+    process = subprocess.Popen(stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE, *popenargs, **kwargs)
     output, unused_err = process.communicate()
     retcode = process.poll()
     return output, retcode

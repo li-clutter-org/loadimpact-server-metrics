@@ -205,14 +205,18 @@ def check_output(*popenargs, **kwargs):
     """Based on check_output in Python 2.7 subprocess module."""
     if 'stdout' in kwargs:
         raise ValueError('stdout argument not allowed, it will be overridden.')
+
     """https://github.com/pyinstaller/pyinstaller/wiki/Recipe-subprocess"""
-    kwargs.pop('stdin', None)
-    kwargs.pop('stderr', None)
-    process = subprocess.Popen(stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE, *popenargs, **kwargs)
+    if running_on_linux:
+        process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
+    else:
+        kwargs.pop('stdin', None)
+        kwargs.pop('stderr', None)
+        process = subprocess.Popen(stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE, *popenargs, **kwargs)
+
     output, unused_err = process.communicate()
     retcode = process.poll()
     return output, retcode
-
 
 class AgentState(object):
     """The agent can only be in these states. Either sending data or not."""

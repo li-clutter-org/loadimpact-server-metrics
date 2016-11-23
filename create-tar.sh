@@ -1,6 +1,6 @@
 #!/bin/sh
 
-VERSION="1.1"
+VERSION="1.1.1"
 
 TMP="/tmp/li-metrics-agent"
 TMP_FILE="/tmp/li-metrics-agent_${VERSION}.tar.gz"

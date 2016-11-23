@@ -1,3 +1,5 @@
+### 1.1.1
+- [win/fix] Fix issues with running shell commands when developing custom metrics
 
 ### 1.1
 - [feat]  Compatibility with `psutil` versions form 0.4.0 up to latest 4.3.0

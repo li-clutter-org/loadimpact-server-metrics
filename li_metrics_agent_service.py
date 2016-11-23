@@ -28,7 +28,7 @@ import sys
 __author__ = "Load Impact"
 __copyright__ = "Copyright 2012, Load Impact"
 __license__ = "Apache License v2.0"
-__version__ = "1.1"
+__version__ = "1.1.1"
 __email__ = "support@loadimpact.com"
 
 

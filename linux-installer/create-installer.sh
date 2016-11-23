@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Packages version and iteration
-version=1.1
-dev_version=1.2
+version=1.1.1
+dev_version=1.1.2
 iteration=1
 package_name=li-metrics-agent
 
@@ -19,7 +19,7 @@ systemd_dir=/lib/systemd/system
 if [[ $CIRCLE_BRANCH = "develop" ]]; then
   echo $(date)
   package_name+="-dev"
-  version=dev_version
+  version="${dev_version}"
   iteration+=".$(date +%Y%m%d.%H%M)"
 fi
 

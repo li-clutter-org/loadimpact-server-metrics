@@ -118,7 +118,7 @@ Next see [configuration section](2-CONFIGURE.md) for advanced agent configuratio
 
 ### Windows
 
-Download the [Windows installer](https://s3.amazonaws.com/loadimpact/server-metrics-agent/server-metrics-agent-1.1-win.amd64.exe), run it and the agent will install itself as a "Load Impact Server metrics agent" service. You can find it in the local services list after installation.
+Download the [Windows installer](https://s3.amazonaws.com/loadimpact/server-metrics-agent/server-metrics-agent-1.1.1-win.amd64.exe), run it and the agent will install itself as a "Load Impact Server metrics agent" service. You can find it in the local services list after installation.
 
 During the installation you will be asked to give the server metrics agent a name and also to provide your server metrics token. The server metrics token can be generated/found on your [https://app.loadimpact.com/server-agents/load-impact](https://app.loadimpact.com/server-agents/load-impact)
 

@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Packages version and iteration
-version=1.1
-dev_version=1.2
-iteration=2
+version=1.1.1
+dev_version=1.1.2
+iteration=1
 package_name=li-metrics-agent
 
 lib_dir=/usr/lib/li_metrics_agent
